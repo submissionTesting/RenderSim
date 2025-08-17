@@ -1,0 +1,58 @@
+{
+  "CICERO": {
+    "Sample": [],
+    "Encode": ["AG", "reducer"],
+    "FieldComp": ["NPU_PE_v1"],
+    "Blending": []
+  },
+  "GauRast": {
+    "Sample": [],
+    "Encode": [],
+    "FieldComp": ["PE", "PE_array"],
+    "Blending": ["VRU_v1"]
+  },
+  "GSCore": {
+    "Sample": [],
+    "Encode": [],
+    "FieldComp": [],
+    "Blending": ["QSU", "BSU", "VRU_v2"]
+  },
+  "GS_processor": {
+    "Sample": [],
+    "Encode": [],
+    "FieldComp": [],
+    "Blending": ["IE", "UNIIE", "VRU_v3"]
+  },
+  "ICARUS": {
+    "Sample": [],
+    "Encode": ["PEU"],
+    "FieldComp": [
+      "fixedpoint_mul",
+      "MLP_block",
+      "MLP_monb",
+      "MLP_shared",
+      "MLP_sonb",
+      "MLP_ssa",
+      "MLP_vanilla"
+    ],
+    "Blending": ["VRU_v4"]
+  },
+  "IRIS": {
+    "Sample": ["HAMAT", "RFM"],
+    "Encode": [],
+    "FieldComp": [],
+    "Blending": []
+  },
+  "NEUREX": {
+    "Sample": [],
+    "Encode": ["ICU", "IGU"],
+    "FieldComp": ["NPU_v2", "NPU_PE_v2"],
+    "Blending": []
+  },
+  "SRender": {
+    "Sample": [],
+    "Encode": ["SPE", "CU", "DCU"],
+    "FieldComp": [],
+    "Blending": ["NPU", "NPU_PE", "PRU"]
+  }
+}

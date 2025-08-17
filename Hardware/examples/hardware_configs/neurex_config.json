@@ -1,0 +1,158 @@
+{
+  "accelerator_name": "NeuRex",
+  "accelerator_type": "Neural Rendering Accelerator",
+  "description": "NeuRex - Hash-grid based neural rendering accelerator",
+  "reference": "Lee et al., NeuRex: A Neural Rendering Accelerator with Hash Encoding, 2023",
+
+  "hardware_modules": {
+    "index_generation_unit": {
+      "module_type": "ENCODING",
+      "implementation": "hash_index_gen",
+      "count": 1,
+      "specifications": {
+        "num_levels": 16,
+        "features_per_level": 2,
+        "precision": "fp16"
+      },
+      "performance": {
+        "latency_cycles": 6,
+        "throughput_ops_per_cycle": 8.0,
+        "max_frequency_mhz": 1000
+      },
+      "resources": {
+        "area_um2": 48563,
+        "power_uw": 4836,
+        "memory_kb": 16
+      }
+    },
+
+    "systolic_array_32x32": {
+      "module_type": "FIELD_COMPUTATION",
+      "implementation": "systolic_array",
+      "count": 1,
+      "specifications": {
+        "array_size": "32x32",
+        "activation": "relu",
+        "precision": "fp16"
+      },
+      "performance": {
+        "latency_cycles": 37,
+        "throughput_ops_per_cycle": 1024.0,
+        "max_frequency_mhz": 1000
+      },
+      "resources": {
+        "area_um2": 540000,
+        "power_uw": 110000,
+        "memory_kb": 512
+      }
+    },
+
+    "interpolation_compute_unit": {
+      "module_type": "VOLUME_RENDERING",
+      "implementation": "trilinear_interp",
+      "count": 1,
+      "specifications": {
+        "kernel": "trilinear",
+        "precision": "fp16"
+      },
+      "performance": {
+        "latency_cycles": 4,
+        "throughput_ops_per_cycle": 16.0,
+        "max_frequency_mhz": 1000
+      },
+      "resources": {
+        "area_um2": 17371,
+        "power_uw": 2144,
+        "memory_kb": 32
+      }
+    },
+
+    "memory_controller": {
+      "module_type": "MEMORY_INTERFACE",
+      "implementation": "hbm2_controller",
+      "count": 1,
+      "specifications": {
+        "memory_type": "HBM2",
+        "frequency_mhz": 2000,
+        "data_width_bits": 1024,
+        "channels": 8
+      },
+      "performance": {
+        "latency_cycles": 20,
+        "bandwidth_gbps": 512.0,
+        "max_frequency_mhz": 1000
+      },
+      "resources": {
+        "area_um2": 250000,
+        "power_uw": 200000,
+        "memory_kb": 0
+      }
+    }
+  },
+
+  "interconnect": {
+    "topology": "mesh",
+    "protocol": "AXI4",
+    "specifications": {
+      "data_width_bits": 512,
+      "address_width_bits": 64,
+      "max_outstanding_transactions": 32
+    },
+    "performance": {
+      "latency_cycles": 2,
+      "bandwidth_gbps": 256.0
+    },
+    "resources": {
+      "area_um2": 15000,
+      "power_uw": 1000
+    }
+  },
+
+  "memory_hierarchy": {
+    "l1_cache": {
+      "size_kb": 64,
+      "associativity": 8,
+      "line_size_bytes": 64,
+      "latency_cycles": 1
+    },
+    "l2_cache": {
+      "size_kb": 2048,
+      "associativity": 16,
+      "line_size_bytes": 64,
+      "latency_cycles": 10
+    },
+    "main_memory": {
+      "type": "HBM2",
+      "size_gb": 8,
+      "bandwidth_gbps": 512.0,
+      "latency_cycles": 200
+    }
+  },
+
+  "operator_mapping": {
+    "HASH_ENCODE": "index_generation_unit",
+    "POSITIONAL_ENCODE": "index_generation_unit",
+    "FIELD_COMPUTATION": "systolic_array_32x32",
+    "MLP": "systolic_array_32x32",
+    "SAMPLING": "interpolation_compute_unit",
+    "BLENDING": "interpolation_compute_unit",
+    "VOLUME_RENDERING": "interpolation_compute_unit",
+    "MEMORY_ACCESS": "memory_controller"
+  },
+
+  "system_specifications": {
+    "target_frequency_mhz": 1000,
+    "supply_voltage_v": 1.0,
+    "technology_node_nm": 7,
+    "target_fps": 30,
+    "max_power_budget_mw": 250,
+    "max_area_budget_mm2": 25
+  },
+
+  "validation_metrics": {
+    "modeling_accuracy_percent": 9.33,
+    "reference_power_mw": 230,
+    "reference_area_mm2": 21.4,
+    "reference_fps": 19.7
+  }
+}

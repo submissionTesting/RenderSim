@@ -1,0 +1,164 @@
+{
+  "accelerator_name": "ICARUS",
+  "accelerator_type": "Neural Rendering Accelerator",
+  "description": "ICARUS - Inverse ray tracing accelerator for neural radiance fields",
+  "reference": "Rao et al., ICARUS: An Accelerator for Inverse Ray Tracing for NeRF, HPCA 2022",
+  
+  "hardware_modules": {
+    "pos_encoding_unit": {
+      "module_type": "ENCODING",
+      "implementation": "positional_encoder",
+      "count": 1,
+      "specifications": {
+        "encoding_type": "positional",
+        "max_frequencies": 10,
+        "input_dimensions": 3,
+        "output_dimensions": 60,
+        "precision": "fp16"
+      },
+      "performance": {
+        "latency_cycles": 130,
+        "throughput_ops_per_cycle": 1.0,
+        "max_frequency_mhz": 1000
+      },
+      "resources": {
+        "area_um2": 6714,
+        "power_uw": 305,
+        "memory_kb": 8
+      }
+    },
+    
+    "mlp_engine": {
+      "module_type": "FIELD_COMPUTATION", 
+      "implementation": "systolic_array",
+      "count": 1,
+      "specifications": {
+        "network_depth": 8,
+        "hidden_dimensions": 256,
+        "activation": "relu",
+        "precision": "fp16",
+        "array_size": "32x32"
+      },
+      "performance": {
+        "latency_cycles": 64,
+        "throughput_ops_per_cycle": 1024.0,
+        "max_frequency_mhz": 1000
+      },
+      "resources": {
+        "area_um2": 5900000,
+        "power_uw": 400000,
+        "memory_kb": 512
+      }
+    },
+    
+    "volume_rendering_unit": {
+      "module_type": "VOLUME_RENDERING",
+      "implementation": "alpha_compositing",
+      "count": 1,
+      "specifications": {
+        "sampling_strategy": "stratified",
+        "max_samples_per_ray": 64,
+        "blending_mode": "alpha_over",
+        "precision": "fp16"
+      },
+      "performance": {
+        "latency_cycles": 192,
+        "throughput_ops_per_cycle": 4.0,
+        "max_frequency_mhz": 1000
+      },
+      "resources": {
+        "area_um2": 4755,
+        "power_uw": 1917,
+        "memory_kb": 16
+      }
+    },
+    
+    "memory_controller": {
+      "module_type": "MEMORY_INTERFACE",
+      "implementation": "ddr4_controller",
+      "count": 1,
+      "specifications": {
+        "memory_type": "DDR4",
+        "frequency_mhz": 3200,
+        "data_width_bits": 64,
+        "channels": 4
+      },
+      "performance": {
+        "latency_cycles": 20,
+        "bandwidth_gbps": 51.2,
+        "max_frequency_mhz": 1000
+      },
+      "resources": {
+        "area_um2": 12000,
+        "power_uw": 2500,
+        "memory_kb": 4
+      }
+    }
+  },
+  
+  "interconnect": {
+    "topology": "bus",
+    "protocol": "AXI4",
+    "specifications": {
+      "data_width_bits": 512,
+      "address_width_bits": 64,
+      "max_outstanding_transactions": 16
+    },
+    "performance": {
+      "latency_cycles": 2,
+      "bandwidth_gbps": 64.0
+    },
+    "resources": {
+      "area_um2": 5000,
+      "power_uw": 150
+    }
+  },
+  
+  "memory_hierarchy": {
+    "l1_cache": {
+      "size_kb": 32,
+      "associativity": 4,
+      "line_size_bytes": 64,
+      "latency_cycles": 1
+    },
+    "l2_cache": {
+      "size_kb": 512,
+      "associativity": 8,
+      "line_size_bytes": 64,
+      "latency_cycles": 10
+    },
+    "main_memory": {
+      "type": "DDR4",
+      "size_gb": 16,
+      "bandwidth_gbps": 51.2,
+      "latency_cycles": 200
+    }
+  },
+  
+  "operator_mapping": {
+    "HASH_ENCODE": "pos_encoding_unit",
+    "POSITIONAL_ENCODE": "pos_encoding_unit", 
+    "FIELD_COMPUTATION": "mlp_engine",
+    "MLP": "mlp_engine",
+    "SAMPLING": "volume_rendering_unit",
+    "BLENDING": "volume_rendering_unit",
+    "VOLUME_RENDERING": "volume_rendering_unit",
+    "MEMORY_ACCESS": "memory_controller"
+  },
+  
+  "system_specifications": {
+    "target_frequency_mhz": 1000,
+    "supply_voltage_v": 1.0,
+    "technology_node_nm": 28,
+    "target_fps": 30,
+    "max_power_budget_mw": 500,
+    "max_area_budget_mm2": 10
+  },
+  
+  "validation_metrics": {
+    "modeling_accuracy_percent": 9.04,
+    "reference_power_mw": 450,
+    "reference_area_mm2": 7.6,
+    "reference_fps": 0.02
+  }
+}

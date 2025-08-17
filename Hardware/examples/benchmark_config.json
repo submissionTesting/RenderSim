@@ -1,0 +1,11 @@
+{
+  "pipelines": ["vanilla-nerf", "instant-ngp"],
+  "accelerators": ["icarus", "neurex"],
+  "datasets": ["lego"],
+  "image_indices": [0],
+  "output_dir": "benchmark_results",
+  "nerfstudio_output": "output_result",
+  "max_workers": 2,
+  "enable_visualization": true,
+  "enable_ppa_analysis": true
+} 

@@ -1,0 +1,55 @@
+{
+  "index_duplicate_calls": true,
+  "functions_to_trace": [
+    "nerfstudio.models.vanilla_nerf.NeRFModel.get_outputs",
+    "nerfstudio.model_components.ray_samplers.UniformSampler.generate_ray_samples",
+    "nerfstudio.model_components.ray_samplers.PDFSampler.generate_ray_samples",
+    "nerfstudio.cameras.rays.RayBundle.get_ray_samples",
+    "nerfstudio.fields.vanilla_nerf_field.NeRFField.get_density",
+    "nerfstudio.fields.vanilla_nerf_field.NeRFField.get_outputs",
+    "nerfstudio.cameras.rays.RaySamples.get_weights",
+    "nerfstudio.field_components.encodings.NeRFEncoding.forward",
+    "nerfstudio.field_components.encodings.HashEncoding.forward",
+    "nerfstudio.field_components.mlp.MLP.forward",
+    "nerfstudio.field_components.field_heads.DensityFieldHead.forward",
+    "nerfstudio.field_components.field_heads.RGBFieldHead.forward",
+    "nerfstudio.model_components.renderers.AccumulationRenderer.forward",
+    "nerfstudio.model_components.renderers.RGBRenderer.forward",
+    "nerfstudio.model_components.renderers.DepthRenderer.forward"
+  ],
+  "disabled_functions_to_trace": [
+  ],
+  "sequence": {
+    "add_sequence_edges": true,
+    "sequence_edge_attr": "sequence"
+  },
+  "stage": {
+    "link_coarse_to_fine": true,
+    "cross_stage_edge_attr": "stage_transition",
+    "add_concat_edge": true,
+    "concat_edge_attr": "data_concat"
+  },
+  "plot": {
+    "show_node_labels": true,
+    "show_edge_labels": true,
+    "node_label_template": "{func_name}\\n{input_shapes}->{output_shapes}",
+    "edge_label_attr": "weight",
+    "figsize": [36, 60],
+    "dpi": 200,
+    "layout": "layered",
+    "rankdir": "TB",
+    "layout_k": 0.3,
+    "node_size": 120,
+    "edge_width": 1.0,
+    "node_color": "#1f77b4",
+    "edge_color": "#111111",
+    "font_size": 10,
+    "axes_facecolor": "#ffffff",
+    "aggregate_by_func": false,
+    "scale_node_size_by_count": false,
+    "node_size_min": 300,
+    "node_size_max": 1200,
+    "write_vector_copy": true,
+    "vector_copy_format": "svg"
+  }
+} 

@@ -1,0 +1,40 @@
+{
+  "hw_units": [
+    {
+      "id": "sampler0",
+      "type": "SAMPLING",
+      "throughput": 100000000,
+      "memory_kb": 64
+    },
+    {
+      "id": "encoder0", 
+      "type": "ENCODING",
+      "throughput": 80000000,
+      "memory_kb": 128
+    },
+    {
+      "id": "mlp0",
+      "type": "FIELD_COMPUTATION", 
+      "throughput": 128000000,
+      "memory_kb": 256
+    },
+    {
+      "id": "mlp1",
+      "type": "FIELD_COMPUTATION",
+      "throughput": 128000000, 
+      "memory_kb": 256
+    },
+    {
+      "id": "renderer0",
+      "type": "BLENDING",
+      "throughput": 64000000,
+      "memory_kb": 32
+    },
+    {
+      "id": "generic0",
+      "type": "GENERIC",
+      "throughput": 50000000,
+      "memory_kb": 128
+    }
+  ]
+} 

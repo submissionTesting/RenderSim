@@ -1,0 +1,80 @@
+{
+  "nodes": {
+    "op_0": {
+      "op_node": {
+        "id": "op_0",
+        "op_type": "ENCODING",
+        "inputs": [
+          {
+            "shape": [1024, 3],
+            "dtype": "float32"
+          }
+        ],
+        "outputs": [
+          {
+            "shape": [1024, 63],
+            "dtype": "float32"
+          }
+        ],
+        "call_count": 1
+      },
+      "hw_unit": "encoder_0",
+      "attrs": {
+        "encoding_type": "positional",
+        "max_frequencies": "10"
+      }
+    },
+    "op_1": {
+      "op_node": {
+        "id": "op_1", 
+        "op_type": "FIELD_COMPUTATION",
+        "inputs": [
+          {
+            "shape": [1024, 63],
+            "dtype": "float32"
+          }
+        ],
+        "outputs": [
+          {
+            "shape": [1024, 4],
+            "dtype": "float32"
+          }
+        ],
+        "call_count": 1
+      },
+      "hw_unit": "mlp_0",
+      "attrs": {
+        "layer_count": "4",
+        "hidden_size": "256"
+      }
+    },
+    "op_2": {
+      "op_node": {
+        "id": "op_2",
+        "op_type": "BLENDING", 
+        "inputs": [
+          {
+            "shape": [1024, 4],
+            "dtype": "float32"
+          }
+        ],
+        "outputs": [
+          {
+            "shape": [1024, 3],
+            "dtype": "float32"
+          }
+        ],
+        "call_count": 1
+      },
+      "hw_unit": "renderer_0",
+      "attrs": {
+        "blending_mode": "alpha",
+        "sample_count": "128"
+      }
+    }
+  },
+  "edges": [
+    ["op_0", "op_1"],
+    ["op_1", "op_2"]
+  ]
+} 
