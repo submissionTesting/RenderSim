@@ -6,7 +6,7 @@ file(GLOB PE_HEADERS "*.h")
 # exclude files including tb_ from sources
 list(FILTER PE_SOURCES EXCLUDE REGEX "tb_")
 
-include_directories(../include)
+include_directories(../include_v2)
 
 add_executable(sim_PE testbench.cpp ${PE_SOURCES} ${PE_HEADERS})
 

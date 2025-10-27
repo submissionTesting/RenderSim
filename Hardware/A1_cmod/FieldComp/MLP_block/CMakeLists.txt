@@ -6,7 +6,7 @@ file(GLOB MLP_BLOCK_HEADERS "*.h")
 # exclude files including tb_ from sources
 list(FILTER MLP_BLOCK_SOURCES EXCLUDE REGEX "tb_")
 
-include_directories(../include ../MLP_shared)
+include_directories(../include_v3 ../MLP_shared)
 
 add_executable(sim_MLP_BLOCK testbench.cpp ${MLP_BLOCK_SOURCES} ${MLP_BLOCK_HEADERS})
 

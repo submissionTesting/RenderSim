@@ -6,7 +6,7 @@ file(GLOB BSU_HEADERS "*.h")
 # exclude files including tb_ from sources
 list(FILTER BSU_SOURCES EXCLUDE REGEX "tb_")
 
-include_directories(../include)
+include_directories(../include_v2)
 
 add_executable(sim_BSU testbench.cpp ${BSU_SOURCES} ${BSU_HEADERS})
 

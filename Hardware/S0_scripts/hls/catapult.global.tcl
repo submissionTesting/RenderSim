@@ -73,6 +73,21 @@ if { $TECH_NODE eq "SAEDN14RVT" } {
     solution library add $BASELIB -- -rtlsyntool DesignCompiler -vendor TSMC -technology $TECHNOLOGY
     solution library add $BASELIB
 
+
+    # Add dual port SRAMs
+    # solution library add 2048x32
+    # solution library add 512x128
+    # ...
+
+    # # Add single port SRAMs for word size 2048 to 4096
+    # solution library add 2048x32
+    # solution library add 2048x64
+    # ...
+
+    # # Add single port SRAMs for size smaller than 2048
+    # solution library add 1024x32
+    # solution library add 512x128
+    # ...
 } else {
     echo "WARNING: No HLS libs available, use catapult default libraries."
     set SKIP_TECH_LIBS true

@@ -26,6 +26,7 @@ This folder is for generating results of hardware module latency, throughput, ar
   - [Step 5: Obtain power and area of the implemented module](#step-5-obtain-power-and-area-of-the-implemented-module)
   - [Step 6: Configure linker.json](#step-6-configure-linkerjson)
 - [Others](#others)
+  - [Hardware Library Specification](#hardware-library-specification)
   - [How It Works (builder.py Overview)](#how-it-works-builderpy-overview)
 
 ## Environment Setup
@@ -248,4 +249,9 @@ The script supports three flows:
 - **PWR (Power Analysis)**: `run_pwr.py`
 
 Each flow can be run for all accelerators (`--all`), a specific accelerator (e.g., `CICERO`), or a specific module (`--module Encode/AG`).
+
+
+### Hardware Library Specification
+
+For a detailed list of supported hardware modules, their I/O datatypes, architectural parameters, and legal optimizations, see [`specification.md`](specification.md).
 

@@ -63,3 +63,5 @@ set(SIMFLAGS_CYCACC "-DCONNECTIONS_ACCURATE_SIM -DSC_INCLUDE_DYNAMIC_PROCESSES")
 # add subdirectories for Encode modules
 add_subdirectory(reducer)
 add_subdirectory(AG)
+add_subdirectory(FRM)
+add_subdirectory(BUM)

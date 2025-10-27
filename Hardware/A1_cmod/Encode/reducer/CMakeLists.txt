@@ -6,7 +6,7 @@ file(GLOB reducer_HEADERS "*.h")
 # exclude files including tb_ from sources
 list(FILTER reducer_SOURCES EXCLUDE REGEX "tb_")
 
-include_directories(../include)
+include_directories(../include_v1)
 
 add_executable(sim_reducer testbench.cpp ${reducer_SOURCES} ${reducer_HEADERS})
 

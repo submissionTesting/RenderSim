@@ -6,7 +6,7 @@ file(GLOB AG_HEADERS "*.h")
 # exclude files including tb_ from sources
 list(FILTER AG_SOURCES EXCLUDE REGEX "tb_")
 
-include_directories(../include)
+include_directories(../include_v1)
 
 add_executable(sim_AG testbench.cpp ${AG_SOURCES} ${AG_HEADERS})
 

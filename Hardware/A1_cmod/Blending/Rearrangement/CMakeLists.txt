@@ -1,0 +1,12 @@
+file(GLOB REARRANGEMENT_SOURCES "*.cpp")
+file(GLOB REARRANGEMENT_HEADERS "*.h")
+
+list(FILTER REARRANGEMENT_SOURCES EXCLUDE REGEX "tb_")
+
+include_directories(../include_v2)
+
+add_executable(sim_Rearrangement testbench.cpp ${REARRANGEMENT_SOURCES} ${REARRANGEMENT_HEADERS})
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CFLAGS} ${SIMFLAGS} ${LIBFLAGS}")
+
+

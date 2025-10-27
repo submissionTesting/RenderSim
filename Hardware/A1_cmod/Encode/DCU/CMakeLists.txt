@@ -6,7 +6,7 @@ file(GLOB DCU_HEADERS "*.h")
 # exclude files including tb_ from sources
 list(FILTER DCU_SOURCES EXCLUDE REGEX "tb_")
 
-include_directories(../include)
+include_directories(../include_v4)
 
 add_executable(sim_DCU testbench.cpp ${DCU_SOURCES} ${DCU_HEADERS})
 

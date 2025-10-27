@@ -6,7 +6,7 @@ file(GLOB IGU_HEADERS "*.h")
 # exclude files including tb_ from sources
 list(FILTER IGU_SOURCES EXCLUDE REGEX "tb_")
 
-include_directories(../include)
+include_directories(../include_v3)
 
 add_executable(sim_IGU testbench.cpp ${IGU_SOURCES} ${IGU_HEADERS})
 

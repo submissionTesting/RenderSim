@@ -54,5 +54,30 @@
     "Encode": ["SPE", "CU", "DCU"],
     "FieldComp": [],
     "Blending": ["NPU", "NPU_PE", "PRU"]
+  },
+  "GSArch": {
+    "Sample": ["CullingConversionUnit"],
+    "Encode": [],
+    "FieldComp": [],
+    "Blending": [
+      "Sorting",
+      "TileMerging",
+      "FeatureCompute",
+      "GradientCompute",
+      "GradientPruning",
+      "Rearrangement"
+    ]
+  },
+  "Instant3d": {
+    "Sample": [],
+    "Encode": ["FRM", "BUM"],
+    "FieldComp": ["NPU_v2", "NPU_PE_v2"],
+    "Blending": []
+  },
+  "GBU": {
+    "Sample": [],
+    "Encode": [],
+    "FieldComp": [],
+    "Blending": ["RowProcessing", "RowGeneration", "DecompBinning"]
   }
 }

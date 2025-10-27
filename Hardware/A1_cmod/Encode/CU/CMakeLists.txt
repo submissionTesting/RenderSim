@@ -6,7 +6,7 @@ file(GLOB CU_HEADERS "*.h")
 # exclude files including tb_ from sources
 list(FILTER CU_SOURCES EXCLUDE REGEX "tb_")
 
-include_directories(../include)
+include_directories(../include_v4)
 
 add_executable(sim_CU testbench.cpp ${CU_SOURCES} ${CU_HEADERS})
 

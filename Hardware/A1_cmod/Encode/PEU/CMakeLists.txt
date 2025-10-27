@@ -6,7 +6,7 @@ file(GLOB PEU_HEADERS "*.h")
 # exclude files including tb_ from sources
 list(FILTER PEU_SOURCES EXCLUDE REGEX "tb_")
 
-include_directories(../include)
+include_directories(../include_v2)
 
 add_executable(sim_PEU testbench.cpp ${PEU_SOURCES} ${PEU_HEADERS})
 

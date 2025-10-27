@@ -6,7 +6,7 @@ file(GLOB NPU_PE_HEADERS "*.h")
 # exclude files including tb_ from sources
 list(FILTER NPU_PE_SOURCES EXCLUDE REGEX "tb_")
 
-include_directories(../include)
+include_directories(../include_v4)
 
 add_executable(sim_NPU_PE testbench.cpp ${NPU_PE_SOURCES} ${NPU_PE_HEADERS})
 

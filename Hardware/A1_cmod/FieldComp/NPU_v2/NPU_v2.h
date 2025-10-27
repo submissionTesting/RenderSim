@@ -6,7 +6,7 @@
 #include <nvhls_connections.h>
 #include <ac_std_float.h>
 
-#include "../NPU_PE_v2/NPU_PE.h"
+#include "../NPU_PE_v2/NPU_PE_v2.h"
 
 class NPU_v2 : public match::Module {
     SC_HAS_PROCESS(NPU_v2);

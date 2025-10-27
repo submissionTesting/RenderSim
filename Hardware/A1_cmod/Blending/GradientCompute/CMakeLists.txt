@@ -1,0 +1,12 @@
+file(GLOB GRADIENTCOMPUTE_SOURCES "*.cpp")
+file(GLOB GRADIENTCOMPUTE_HEADERS "*.h")
+
+list(FILTER GRADIENTCOMPUTE_SOURCES EXCLUDE REGEX "tb_")
+
+include_directories(../include_v6)
+
+add_executable(sim_GradientCompute testbench.cpp ${GRADIENTCOMPUTE_SOURCES} ${GRADIENTCOMPUTE_HEADERS})
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CFLAGS} ${SIMFLAGS} ${LIBFLAGS}")
+
+

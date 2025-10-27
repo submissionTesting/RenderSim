@@ -1,0 +1,12 @@
+file(GLOB FEATURECOMPUTE_SOURCES "*.cpp")
+file(GLOB FEATURECOMPUTE_HEADERS "*.h")
+
+list(FILTER FEATURECOMPUTE_SOURCES EXCLUDE REGEX "tb_")
+
+include_directories(../include_v6)
+
+add_executable(sim_FeatureCompute testbench.cpp ${FEATURECOMPUTE_SOURCES} ${FEATURECOMPUTE_HEADERS})
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CFLAGS} ${SIMFLAGS} ${LIBFLAGS}")
+
+

@@ -6,7 +6,7 @@ file(GLOB SPE_HEADERS "*.h")
 # exclude files including tb_ from sources
 list(FILTER SPE_SOURCES EXCLUDE REGEX "tb_")
 
-include_directories(../include)
+include_directories(../include_v4)
 include_directories(../CU)
 include_directories(../DCU)
 

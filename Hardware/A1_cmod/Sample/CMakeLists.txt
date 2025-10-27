@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.22)
-project(SAMPLE)
+project(BLENDING)
 
 set(CMAKE_CXX_STANDARD 11)
 #set(CMAKE_COLOR_DIAGNOSTICS ON)
 
-message(STATUS "High Level Synthesis C Model Project - Sample")
+message(STATUS "High Level Synthesis C Model Project - Blending")
 
 # Check for CATAPULT_HOME
 if(NOT DEFINED ENV{CATAPULT_HOME})
@@ -60,5 +60,6 @@ set(LIBFLAGS "-lstdc++ -lsystemc -lm -lpthread -lboost_timer -lboost_chrono -lbo
 set(SIMFLAGS "-DCONNECTIONS_ACCURATE_SIM -DSC_INCLUDE_DYNAMIC_PROCESSES")# -DHLS_CATAPULT")# -DCONN_RAND_STALL")
 set(SIMFLAGS_CYCACC "-DCONNECTIONS_ACCURATE_SIM -DSC_INCLUDE_DYNAMIC_PROCESSES")
 
-# add subdirectories for Sample modules
-add_subdirectory(RFM) 
+# add subdirectories for Blending modules
+add_subdirectory(CullingConversionUnit)
+add_subdirectory(RFM)

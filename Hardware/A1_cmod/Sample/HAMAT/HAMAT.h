@@ -1,7 +1,7 @@
 #ifndef IRIS_HAMAT_H
 #define IRIS_HAMAT_H
 
-#include "GSCOREPackDef.h"
+#include "IRISPackDef.h"
 #include <ac_channel.h>
 #include <nvhls_connections.h>
 #include <ac_math/ac_hcordic.h>

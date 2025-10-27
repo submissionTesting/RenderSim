@@ -6,7 +6,7 @@ file(GLOB ICU_HEADERS "*.h")
 # exclude files including tb_ from sources
 list(FILTER ICU_SOURCES EXCLUDE REGEX "tb_")
 
-include_directories(../include)
+include_directories(../include_v3)
 
 add_executable(sim_ICU testbench.cpp ${ICU_SOURCES} ${ICU_HEADERS})
 
