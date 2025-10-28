@@ -25,6 +25,32 @@ static const std::unordered_map<std::string, std::vector<std::string>> kFallback
     {"MLP_COMPUTATION", {"MLP", "FIELD_COMPUTATION"}},
     {"RGB_VOLUME_RENDERING", {"VOLUME_RENDERING", "BLENDING"}},
     {"VOLUME_RENDERING", {"VOLUME_RENDERING", "BLENDING"}},
+    
+    // GSArch-specific mappings
+    {"TILEMERGING", {"TILEMERGING", "BLENDING", "FIELD_COMPUTATION"}},
+    {"FEATURECOMPUTE", {"FEATURECOMPUTE", "FIELD_COMPUTATION"}},
+    {"GRADIENTCOMPUTE", {"GRADIENTCOMPUTE", "GRADIENT_ACCUMULATION", "FIELD_COMPUTATION"}},
+    {"GRADIENTPRUNING", {"GRADIENTPRUNING", "OPTIMIZATION"}},
+    {"REARRANGEMENT", {"REARRANGEMENT", "OPTIMIZATION"}},
+    
+    // GBU-specific mappings  
+    {"ROWPROCESSING", {"ROWPROCESSING", "FIELD_COMPUTATION"}},
+    {"ROWGENERATION", {"ROWGENERATION", "ENCODING"}},
+    {"DECOMPBINNING", {"DECOMPBINNING", "OPTIMIZATION"}},
+    
+    // Instant3D-specific mappings
+    {"FRM", {"FRM", "HASH_ENCODE", "ENCODING"}},
+    {"BUM", {"BUM", "GRADIENT_ACCUMULATION", "OPTIMIZATION"}},
+    
+    // Generic backward pass mappings
+    {"MLP (B)", {"MLP", "FIELD_COMPUTATION"}},
+    {"HASH_ENCODE (B)", {"HASH_ENCODE", "BUM", "ENCODING"}},
+    {"HASHENCODING (B)", {"HASH_ENCODE", "BUM", "ENCODING"}},
+    {"BLENDING (B)", {"BLENDING", "GRADIENTCOMPUTE", "VOLUME_RENDERING"}},
+    {"GAUSSIANALPHABLEND (B)", {"GRADIENTCOMPUTE", "BLENDING"}},
+    {"RGBRENDERER (B)", {"VOLUME_RENDERING", "BLENDING"}},
+    {"DENSITYRENDERER (B)", {"VOLUME_RENDERING", "BLENDING"}},
+    
     {"UNKNOWN", {"FIELD_COMPUTATION", "VOLUME_RENDERING", "POSITIONAL_ENCODE"}}
 };
 
@@ -44,15 +70,42 @@ MappedIR map_operator_graph(const OperatorGraph &graph, const HWConfig &cfg) {
     for (const auto &node : graph.nodes) {
         std::string op_type = to_upper(node.op_type);
         const std::vector<HWUnit> *candidates = nullptr;
+        
+        // Check if this is a backward operator
+        bool is_backward = op_type.size() > 4 && op_type.substr(op_type.size() - 4) == " (B)";
+        std::string base_op_type = is_backward ? op_type.substr(0, op_type.size() - 4) : op_type;
 
         // direct mapping
         auto it = units_by_type.find(op_type);
         if (it != units_by_type.end() && !it->second.empty()) {
             candidates = &it->second;
         }
+        
+        // For backward operators, also try base op type
+        if (!candidates && is_backward) {
+            auto base_it = units_by_type.find(base_op_type);
+            if (base_it != units_by_type.end() && !base_it->second.empty()) {
+                candidates = &base_it->second;
+            }
+        }
+        
         // fallbacks
         if (!candidates) {
             auto fb_it = kFallbacks.find(op_type);
+            if (fb_it != kFallbacks.end()) {
+                for (const auto &fb : fb_it->second) {
+                    auto fit = units_by_type.find(fb);
+                    if (fit != units_by_type.end() && !fit->second.empty()) {
+                        candidates = &fit->second;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // For backward operators, also try fallback with base op type
+        if (!candidates && is_backward) {
+            auto fb_it = kFallbacks.find(base_op_type);
             if (fb_it != kFallbacks.end()) {
                 for (const auto &fb : fb_it->second) {
                     auto fit = units_by_type.find(fb);

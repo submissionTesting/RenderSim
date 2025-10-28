@@ -7,8 +7,8 @@ import numpy as np
 
 class ComputationOperator(Operator):
     """Base class for all computation operators."""
-    def __init__(self, dim, bitwidth: int = 16, graph=None):
-        super().__init__(dim, bitwidth, graph)
+    def __init__(self, dim, bitwidth: int = 16, graph=None, backward: bool = False):
+        super().__init__(dim, bitwidth, graph, backward=backward)
         
     def get_effective_dim_len(self):
         return 2
@@ -19,7 +19,7 @@ class MLPOperator(ComputationOperator):
                  activation: Optional[nn.Module] = nn.ReLU(), out_activation: Optional[nn.Module] = None,
                  implementation: Literal["tcnn", "torch"] = "torch",
                  use_bias: bool = True,
-                 bitwidth: int = 16, graph=None):
+                 bitwidth: int = 16, graph=None, backward: bool = False):
         self.in_dim = in_dim
         self.num_layers = num_layers
         self.layer_width = layer_width
@@ -30,7 +30,7 @@ class MLPOperator(ComputationOperator):
         self.implementation = implementation
         self.use_bias = use_bias
         
-        super().__init__(dim, bitwidth, graph)
+        super().__init__(dim, bitwidth, graph, backward=backward)
         self.op_type = "MLP"
 
     def get_tensors(self):
@@ -62,6 +62,15 @@ class MLPOperator(ComputationOperator):
             macs += in_w * out_w
         return B * N * 2 * macs
 
+    # Backward modelling -------------------------------------------------
+    def get_backward_num_ops(self):
+        B, N = self.dim[:2]
+        macs = 0
+        for in_w, out_w in self.get_layer_weight_shapes():
+            macs += in_w * out_w
+        # Approximate: dInput + dW accumulation ~ 2× forward MACs
+        return B * N * 4 * macs
+
     def get_input_tensor_shapes(self):
         """Return shapes for activation input and flattened parameter tensor.
         The second input encodes total parameters so the scheduler/mapping can
@@ -81,6 +90,20 @@ class MLPOperator(ComputationOperator):
     def get_output_tensor_shape(self):
         B, N = self.dim[:2]
         return (B, N, self.out_dim)
+
+    # Backward shapes: dOut (+ params) -> dIn
+    def get_backward_input_tensor_shapes(self):
+        B, N = self.dim[:2]
+        total_params = 0
+        for in_w, out_w in self.get_layer_weight_shapes():
+            total_params += in_w * out_w
+            if self.use_bias:
+                total_params += out_w
+        return [(B, N, self.out_dim), (total_params,)]
+
+    def get_backward_output_tensor_shape(self):
+        B, N = self.dim[:2]
+        return (B, N, self.in_dim)
 
     def get_layer_weight_shapes(self):
         """Return a list of (in_features, out_features) for each linear layer.
@@ -109,7 +132,7 @@ class MLPOperator(ComputationOperator):
 class SphericalHarmonicsOperator(ComputationOperator):
     """Operator that evaluates SH basis and applies learned RGB weights."""
 
-    def __init__(self, dim, degree: int = 4, implementation: Literal["tcnn", "torch"] = "torch", bitwidth: int = 16, graph=None):
+    def __init__(self, dim, degree: int = 4, implementation: Literal["tcnn", "torch"] = "torch", bitwidth: int = 16, graph=None, backward: bool = False):
         """Create a SH operator.
 
         Args:
@@ -123,7 +146,7 @@ class SphericalHarmonicsOperator(ComputationOperator):
         # number of basis functions (per colour channel)
         self.num_basis = (degree + 1) ** 2  # (L+1)^2
 
-        super().__init__(dim, bitwidth, graph)
+        super().__init__(dim, bitwidth, graph, backward=backward)
         self.op_type = "SphericalHarmonics"
 
     def get_tensors(self):
@@ -154,6 +177,13 @@ class SphericalHarmonicsOperator(ComputationOperator):
 
         return B * N * ops_per_sample
 
+    def get_backward_num_ops(self):
+        B, N = self.dim[:2]
+        # Backprop through SH: similar complexity to forward
+        ops_basis = 4 * self.num_basis
+        ops_mac   = 2 * self.num_basis * 3
+        return B * N * (ops_basis + ops_mac)
+
     def get_output_tensor_shape(self):
         B, N = self.dim[:2]
         return (B, N, 3)
@@ -161,3 +191,11 @@ class SphericalHarmonicsOperator(ComputationOperator):
     def get_input_tensor_shapes(self):
         B, N = self.dim[:2]
         return [(B, N, 3), (self.num_basis * 3,)]
+
+    def get_backward_input_tensor_shapes(self):
+        B, N = self.dim[:2]
+        return [(B, N, 3), (self.num_basis * 3,)]
+
+    def get_backward_output_tensor_shape(self):
+        B, N = self.dim[:2]
+        return (B, N, 3)

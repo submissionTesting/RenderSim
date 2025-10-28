@@ -7,7 +7,8 @@ This folder provides tools to collect execution traces from neural rendering mod
 ## Folder structure
 - `nerfstudio_vendor/`: files used to do instrumentation in nerfstudio
   - `instrumentation/tracing.py` and `trace_config.json`
-  - `scripts/eval.py`
+  - `scripts/eval.py` (evaluation with tracing)
+  - `scripts/train.py` (training with tracing support)
 - `operator_mapping.py`: maps traced functions to normalized operator taxonomy
 - `dag_to_operators_integration.py`: converts traced DAGs to realistic operators
 - `plot_transformed_operators.py`: visualizes transformed operator graphs
@@ -82,7 +83,9 @@ cd nerfstudio && pip install -e . && cd ..
 cp -f Instrumentation/nerfstudio_vendor/instrumentation/tracing.py nerfstudio/nerfstudio/instrumentation/ || true
 cp -f Instrumentation/nerfstudio_vendor/instrumentation/trace_config.json nerfstudio/nerfstudio/instrumentation/ || true
 cp -f Instrumentation/nerfstudio_vendor/scripts/eval.py nerfstudio/nerfstudio/scripts/ || true
+cp -f Instrumentation/nerfstudio_vendor/scripts/train.py nerfstudio/nerfstudio/scripts/train_instrumented.py || true
 cp -f Instrumentation/nerfstudio_vendor/utils/eval_utils.py nerfstudio/nerfstudio/utils/ || true
+cp -f Instrumentation/nerfstudio_vendor/utils/train_utils.py nerfstudio/nerfstudio/utils/ || true
 ```
 
 #### Download dataset
@@ -107,6 +110,22 @@ cd -  # Return to RenderSim directory
 CUDA_VISIBLE_DEVICES=0 ns-train vanilla-nerf --output-dir output_result --max-num-iterations=10000 --data /tmp/nerf/nerf_synthetic/mic blender-data
 CUDA_VISIBLE_DEVICES=1 ns-train instant-ngp  --output-dir output_result --max-num-iterations=10000 --data /tmp/nerf/nerf_synthetic/mic blender-data
 CUDA_VISIBLE_DEVICES=2 ns-train splatfacto  --output-dir output_result --max-num-iterations=100000 --data /tmp/nerf/nerf_synthetic/mic blender-data
+```
+
+### Training with Tracing
+
+```bash
+# Train with tracing enabled at specific iterations
+python nerfstudio/nerfstudio/scripts/train_instrumented.py vanilla-nerf \
+  --output-dir output_result \
+  --max-num-iterations=1000 \
+  --data /tmp/nerf/nerf_synthetic/mic blender-data \
+  --enable-trace \
+  --trace-iterations 100 500 1000 \
+  --trace-config-path nerfstudio/nerfstudio/instrumentation/trace_config.json
+
+# This will save traces at iterations 100, 500, and 1000 to:
+# output_result/vanilla-nerf-*/traces/execution_dag_iter_*.pkl
 ```
 
 ### Render a scene / Collect Traces

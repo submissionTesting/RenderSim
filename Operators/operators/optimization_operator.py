@@ -8,8 +8,8 @@ class OptimizationOperator(Operator):
     module remains lightweight and import‑cycle free.
     """
 
-    def __init__(self, dim, bitwidth: int = 16, graph=None):
-        super().__init__(dim, bitwidth, graph)
+    def __init__(self, dim, bitwidth: int = 16, graph=None, backward: bool = False):
+        super().__init__(dim, bitwidth, graph, backward=backward)
 
     def get_effective_dim_len(self):
         return 2

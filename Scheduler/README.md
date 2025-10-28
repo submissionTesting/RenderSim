@@ -2,7 +2,7 @@
 
 <img src="Scheduler.png" alt="Scheduler Overview" width="600"/>
 
-This folder schedules the neural-rendering operator graph defined in `Operator` onto the hardware modules specified in `Hardware`, and calculates the resulting latency.
+This folder schedules the neural-rendering operator graph defined in `Operator` onto the hardware modules specified in `Hardware`, and calculates the resulting latency. It supports both inference and training workloads, including backward pass operators and training-specific hardware modules for GSArch, GBU, and Instant3D pipelines.
 
 ## Table of Contents
 - [Unified analysis (CLI)](#unified-analysis-cli)
@@ -46,6 +46,8 @@ The scheduler maps transformed operators to hardware units and produces an execu
 - Operator-level scheduling (intra-operator ordering and constraints)
 - System-level scheduling (resource-aware placement and timing)
 - Optional PPA estimation using the C++ core
+- Training-aware scheduling with backward operator support
+- Specialized mapping for training-specific hardware modules (FRM, BUM, GradientCompute, etc.)
 
 ## Components
 - Python
@@ -88,6 +90,10 @@ This compiles the C++ operator/system scheduler and PPA estimator used by the CL
 - Hardware units and configs
   - Update or add JSON files under `Hardware/examples/hardware_configs/`
   - Ensure parsing in `Scheduler/mapping/hw_config.py` supports new fields
+- Training pipeline support
+  - Add new operator mappings in `Scheduler/mapping/__init__.py` and `Scheduler/cpp/src/mapping/mapping_engine.cpp`
+  - Support backward operators by checking for "(B)" suffix in operator types
+  - Hardware configs for training accelerators are in `Hardware/examples/hardware_configs/` (gsarch_config.json, gbu_config.json, instant3d_config.json)
 
 For the IR written by the scheduler, see `scheduled_ir.json` produced in `results/scheduling/` when using the unified CLI.
 
@@ -116,6 +122,23 @@ system_schedule = sys_scheduler.schedule(op_scheduled_ir)
 print('Total cycles:', system_schedule.total_cycles)
 PY
 ```
+
+## Testing
+
+Comprehensive test suite available in the `tests/` directory:
+
+```bash
+# Run all tests
+cd Scheduler/tests
+python run_all_tests.py
+
+# Run specific test suites
+python test_training_pipelines.py  # Training pipeline integration
+python test_mapping.py              # Mapping engine tests
+python test_scheduler.py            # Scheduler component tests
+```
+
+See `tests/README.md` for detailed test documentation.
 
 ## Python-only prototyping
 

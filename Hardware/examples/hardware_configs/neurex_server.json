@@ -1,8 +1,6 @@
 {
   "accelerator_name": "NeuRex-Server",
   "accelerator_type": "Neural Rendering Accelerator",
-  "description": "NeuRex-Server configuration with SRAM buffers per Table 4.",
-
   "hardware_modules": {
     "systolic_array": {
       "module_type": "FIELD_COMPUTATION",

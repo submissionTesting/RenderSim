@@ -144,6 +144,69 @@ class OptimizationLibrary:
             parameters={"tile_size": [16, 16], "culling_margin": 2}
         ))
         
+        # Training-specific optimizations for GSArch
+        self.register_strategy(OptimizationStrategy(
+            name="gradient_pruning",
+            opt_type=OptimizationType.SKIP,
+            scope=OptimizationScope.ELEMENT_LEVEL,
+            criteria=DecisionCriteria.THRESHOLD_BASED,
+            description="Prune gradients based on informativeness threshold (GSArch)",
+            applicable_operators=["GRADIENTCOMPUTE", "GRADIENTPRUNING"],
+            parameters={"pruning_ratio": 0.4, "informativeness_threshold": 0.01}
+        ))
+        
+        self.register_strategy(OptimizationStrategy(
+            name="tile_merging",
+            opt_type=OptimizationType.REUSE,
+            scope=OptimizationScope.REGION_LEVEL,
+            criteria=DecisionCriteria.BOUNDARY_BASED,
+            description="Hierarchical tile merging for gradient accumulation (GSArch)",
+            applicable_operators=["TILEMERGING"],
+            parameters={"tile_size": 16, "merge_levels": 3}
+        ))
+        
+        # Training-specific optimizations for GBU
+        self.register_strategy(OptimizationStrategy(
+            name="row_processing",
+            opt_type=OptimizationType.REUSE,
+            scope=OptimizationScope.REGION_LEVEL,
+            criteria=DecisionCriteria.BOUNDARY_BASED,
+            description="Row-based bundle processing (GBU)",
+            applicable_operators=["ROWPROCESSING", "ROWGENERATION"],
+            parameters={"bundle_size": 32, "row_width": 256}
+        ))
+        
+        self.register_strategy(OptimizationStrategy(
+            name="decomp_binning",
+            opt_type=OptimizationType.REUSE,
+            scope=OptimizationScope.REGION_LEVEL,
+            criteria=DecisionCriteria.BOUNDARY_BASED,
+            description="Decomposition and binning for memory efficiency (GBU)",
+            applicable_operators=["DECOMPBINNING"],
+            parameters={"bin_size": 64, "decomposition_levels": 4}
+        ))
+        
+        # Training-specific optimizations for Instant3D
+        self.register_strategy(OptimizationStrategy(
+            name="frm_coalescing",
+            opt_type=OptimizationType.REUSE,
+            scope=OptimizationScope.ELEMENT_LEVEL,
+            criteria=DecisionCriteria.BOUNDARY_BASED,
+            description="Feed-forward read coalescing (Instant3D FRM)",
+            applicable_operators=["FRM"],
+            parameters={"coalesce_factor": 4, "prefetch_distance": 8}
+        ))
+        
+        self.register_strategy(OptimizationStrategy(
+            name="bum_merging",
+            opt_type=OptimizationType.REUSE,
+            scope=OptimizationScope.REGION_LEVEL,
+            criteria=DecisionCriteria.BOUNDARY_BASED,
+            description="Backprop update merging for hash table updates (Instant3D BUM)",
+            applicable_operators=["BUM"],
+            parameters={"merge_ratio": 0.6, "update_buffer_size": 4096}
+        ))
+        
         # Low bit optimizations
         self.register_strategy(OptimizationStrategy(
             name="low_precision_sampling",

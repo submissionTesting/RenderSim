@@ -6,16 +6,16 @@ import numpy as np
 
 class SamplingOperator(Operator):
     """Base class for all sampling operators."""
-    def __init__(self, dim, bitwidth: int = 16, graph=None):
-        super().__init__(dim, bitwidth, graph)
+    def __init__(self, dim, bitwidth: int = 16, graph=None, backward: bool = False):
+        super().__init__(dim, bitwidth, graph, backward=backward)
         
     def get_effective_dim_len(self):
         return 2  # assume dim is (B, N)
 
 class UniformSamplerOperator(SamplingOperator):
-    def __init__(self, dim, sampler_type: Literal["uniform", "pdf"] = "uniform", bitwidth: int = 16, graph=None):
+    def __init__(self, dim, sampler_type: Literal["uniform", "pdf"] = "uniform", bitwidth: int = 16, graph=None, backward: bool = False):
         self.sampler_type = sampler_type
-        super().__init__(dim, bitwidth, graph)
+        super().__init__(dim, bitwidth, graph, backward=backward)
         self.op_type = f"{sampler_type.capitalize()}Sampler"
 
     def get_tensors(self):
@@ -49,7 +49,7 @@ class FrustrumCullingOperator(SamplingOperator):
     """
     def __init__(self, dim: Tuple[int], *,              # dim[0] == G
                  fov=60.0, near=0.1, far=100.0,
-                 conservative=False, cull_ratio=0.5):
+                 conservative=False, cull_ratio=0.5, backward: bool = False):
         """
         Args:
             dim: The dimensions of the input/output tensors
@@ -65,7 +65,7 @@ class FrustrumCullingOperator(SamplingOperator):
         self.conservative = conservative
         self.cull_ratio = cull_ratio
         
-        super().__init__(dim)          # now dim has length‑1
+        super().__init__(dim, backward=backward)          # now dim has length‑1
         self.op_type = "FrustumCulling"
     
     def get_tensors(self):
@@ -97,7 +97,7 @@ class ProjectionOperator(SamplingOperator):
     """Projects surviving 3‑D Gaussian centres to 2‑D image space."""
 
     def __init__(self, dim: Tuple[int], *, width: int = 800, height: int = 600,
-                 projection_type: Literal["perspective", "orthographic"] = "perspective"):
+                 projection_type: Literal["perspective", "orthographic"] = "perspective", backward: bool = False):
         """
         Args:
             dim: (P,) where *P* is the number of input points to project.
@@ -108,7 +108,7 @@ class ProjectionOperator(SamplingOperator):
         self.height = height
         self.projection_type = projection_type
 
-        super().__init__(dim)
+        super().__init__(dim, backward=backward)
         self.op_type = "Projection"
 
     def get_tensors(self):
@@ -139,8 +139,8 @@ class ProjectionOperator(SamplingOperator):
 
 class PDFSamplerOperator(UniformSamplerOperator):
     """Importance / PDF‑based sampler variant (inherits all behaviour)."""
-    def __init__(self, dim, bitwidth: int = 16, graph=None):
-        super().__init__(dim, sampler_type="pdf", bitwidth=bitwidth, graph=graph)
+    def __init__(self, dim, bitwidth: int = 16, graph=None, backward: bool = False):
+        super().__init__(dim, sampler_type="pdf", bitwidth=bitwidth, graph=graph, backward=backward)
         # Override op_type explicitly for clarity
         self.op_type = "PDFSampler"
 
@@ -148,7 +148,7 @@ class AABBIntersectionOperator(SamplingOperator):
     """Determine which fixed‑size tiles intersect each Gaussian using axis‑aligned bounding boxes (AABB)."""
 
     def __init__(self, dim: Tuple[int], *, image_wh: Tuple[int, int] = (1280, 720), tile: int = 16,
-                 tile_keep_ratio: float = 0.1):
+                 tile_keep_ratio: float = 0.1, backward: bool = False):
         """
         Args:
             dim: (P,)  number of projected Gaussians.
@@ -159,7 +159,7 @@ class AABBIntersectionOperator(SamplingOperator):
         self.image_w, self.image_h = image_wh
         self.tile      = tile
         self.tile_keep = tile_keep_ratio
-        super().__init__(dim)
+        super().__init__(dim, backward=backward)
         self.op_type = "AABBIntersection"
 
     # ------------------------------------------------------------------
@@ -199,9 +199,9 @@ class OBBIntersectionOperator(AABBIntersectionOperator):
     """Tile‑intersection using oriented bounding boxes (ellipse‑aware)."""
 
     def __init__(self, dim: Tuple[int], *, image_wh: Tuple[int, int] = (1280, 720), tile: int = 16,
-                 tile_keep_ratio: float = 0.05):
+                 tile_keep_ratio: float = 0.05, backward: bool = False):
         # OBB intersection is tighter; default keep ratio lower
-        super().__init__(dim, image_wh=image_wh, tile=tile, tile_keep_ratio=tile_keep_ratio)
+        super().__init__(dim, image_wh=image_wh, tile=tile, tile_keep_ratio=tile_keep_ratio, backward=backward)
         self.op_type = "OBBIntersection"
 
     def get_num_ops(self):
@@ -233,14 +233,15 @@ class FrustumCullingProjectionOperator(SamplingOperator):
                  tile_keep_ratio: float = 0.1,
                  use_obb: bool = False,
                  bitwidth: int = 16,
-                 graph=None):
+                 graph=None,
+                 backward: bool = False):
         self.cull_ratio      = cull_ratio
         self.image_wh        = image_wh
         self.tile            = tile
         self.tile_keep_ratio = tile_keep_ratio
         self.use_obb         = use_obb
 
-        super().__init__(dim, bitwidth, graph)
+        super().__init__(dim, bitwidth, graph, backward=backward)
         self.op_type = "FrustumCullProj"
 
     # ------------------------------------------------------------------

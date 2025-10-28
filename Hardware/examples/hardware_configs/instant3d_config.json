@@ -1,0 +1,169 @@
+{
+  "accelerator_name": "Instant3D",
+  "accelerator_type": "Grid-based Training Accelerator",
+  
+  "hardware_modules": {
+    "feed_forward_read_mapper": {
+      "module_type": "FRM",
+      "implementation": "frm",
+      "count": 2,
+      "specifications": {
+        "hash_table_entries": 524288,
+        "feature_dimensions": 2,
+        "num_levels": 16,
+        "precision": "fp16"
+      },
+      "performance": {
+        "latency_cycles": 8,
+        "throughput_ops_per_cycle": 64.0,
+        "max_frequency_mhz": 1000
+      },
+      "resources": {
+        "area_um2": 232000,
+        "power_uw": 232000,
+        "memory_kb": 256
+      }
+    },
+    
+    "backprop_update_merger": {
+      "module_type": "BUM",
+      "implementation": "bum",
+      "count": 2,
+      "specifications": {
+        "merge_strategy": "hierarchical",
+        "update_buffer_size": 4096,
+        "gradient_precision": "fp32",
+        "weight_precision": "fp16"
+      },
+      "performance": {
+        "latency_cycles": 16,
+        "throughput_ops_per_cycle": 32.0,
+        "max_frequency_mhz": 1000
+      },
+      "resources": {
+        "area_um2": 1503000,
+        "power_uw": 1503000,
+        "memory_kb": 512
+      }
+    },
+
+    "hash_encoder": {
+      "module_type": "HASH_ENCODE",
+      "implementation": "multi_resolution_hash",
+      "count": 4,
+      "specifications": {
+        "num_levels": 16,
+        "features_per_level": 2,
+        "hash_table_size": 524288,
+        "precision": "fp16"
+      },
+      "performance": {
+        "latency_cycles": 12,
+        "throughput_ops_per_cycle": 32.0,
+        "max_frequency_mhz": 1000
+      },
+      "resources": {
+        "area_um2": 300000,
+        "power_uw": 180000,
+        "memory_kb": 1024
+      }
+    },
+
+    "mlp_units": {
+      "module_type": "MLP",
+      "implementation": "systolic_array",
+      "count": 4,
+      "specifications": {
+        "array_size": "16x16",
+        "network_depth": 2,
+        "hidden_dimensions": 64,
+        "precision": "fp16"
+      },
+      "performance": {
+        "latency_cycles": 32,
+        "throughput_ops_per_cycle": 256.0,
+        "max_frequency_mhz": 1000
+      },
+      "resources": {
+        "area_um2": 1721000,
+        "power_uw": 1721000,
+        "memory_kb": 128
+      }
+    },
+
+    "color_density_decomposer": {
+      "module_type": "DECOMPOSITION",
+      "implementation": "color_density_split",
+      "count": 1,
+      "specifications": {
+        "decomposition_type": "asymmetric",
+        "color_channels": 3,
+        "density_channels": 1,
+        "precision": "fp16"
+      },
+      "performance": {
+        "latency_cycles": 4,
+        "throughput_ops_per_cycle": 16.0,
+        "max_frequency_mhz": 1000
+      },
+      "resources": {
+        "area_um2": 50000,
+        "power_uw": 30000,
+        "memory_kb": 32
+      }
+    },
+
+    "gradient_router": {
+      "module_type": "GRADIENT_ROUTING",
+      "implementation": "grad_router",
+      "count": 2,
+      "specifications": {
+        "routing_strategy": "dynamic",
+        "buffer_depth": 256,
+        "precision": "fp32"
+      },
+      "performance": {
+        "latency_cycles": 4,
+        "throughput_ops_per_cycle": 64.0,
+        "max_frequency_mhz": 1000
+      },
+      "resources": {
+        "area_um2": 80000,
+        "power_uw": 60000,
+        "memory_kb": 64
+      }
+    }
+  },
+
+  "sram_blocks": [
+    {"name": "hash_table_buffer", "unit": "HASH_ENCODE", "size_kb": 2048},
+    {"name": "gradient_buffer", "unit": "BUM", "size_kb": 512},
+    {"name": "feature_buffer", "unit": "FRM", "size_kb": 256},
+    {"name": "mlp_weight_buffer", "unit": "MLP", "size_kb": 256}
+  ],
+
+  "interconnect": {
+    "type": "asymmetric_noc",
+    "topology": "butterfly",
+    "forward_bandwidth_gbps": 256,
+    "backward_bandwidth_gbps": 512,
+    "latency_cycles": 3
+  },
+
+  "memory_hierarchy": {
+    "l1_cache_kb": 256,
+    "l2_cache_kb": 2048,
+    "dram_bandwidth_gbps": 768,
+    "dram_capacity_gb": 32
+  },
+
+  "training_specific": {
+    "backward_pass_support": true,
+    "asymmetric_architecture": true,
+    "forward_read_mapper": true,
+    "backward_update_merger": true,
+    "gradient_accumulation": true,
+    "mixed_precision": true,
+    "color_density_decomposition": true
+  }
+}

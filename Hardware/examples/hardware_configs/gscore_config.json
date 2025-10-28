@@ -1,53 +1,66 @@
 {
-  "accelerator_name": "NeuRex-Server",
-  "accelerator_type": "Neural Rendering Accelerator",
-  "description": "NeuRex-Server configuration with SRAM buffers per Table 4.",
-
+  "accelerator_name": "GSCore",
+  "accelerator_type": "3DGS Accelerator",
+  
   "hardware_modules": {
-    "systolic_array": {
-      "module_type": "FIELD_COMPUTATION",
-      "implementation": "systolic_array",
-      "count": 16,
+    "culling_conversion_unit": {
+      "module_type": "SAMPLING",
+      "implementation": "culling_conversion",
+      "count": 1,
       "specifications": {
-        "array_size": "32x32",
+        "tile_size": 16,
         "precision": "fp16"
       },
       "performance": {
-        "latency_cycles": 37,
-        "throughput_ops_per_cycle": 1024.0,
+        "latency_cycles": 128,
+        "throughput_ops_per_cycle": 16.0,
         "max_frequency_mhz": 1000
       },
       "resources": {
-        "area_um2": 7.68e6,  
-        "power_uw": 3.04e6
+        "area_um2": 170000,
+        "power_uw": 140000
       }
     },
-    "interpolation_unit": {
-      "module_type": "VOLUME_RENDERING",
-      "implementation": "interpolation_compute",
-      "count": 64,
+    "bitonic_sorting_unit": {
+      "module_type": "SORTING",
+      "implementation": "bitonic_sort",
+      "count": 1,
       "performance": {
         "latency_cycles": 4,
-        "throughput_ops_per_cycle": 1.0,
+        "throughput_ops_per_cycle": 8.0,
         "max_frequency_mhz": 1000
       },
       "resources": {
-        "area_um2": 0.90e6,
-        "power_uw": 0.38e6
+        "area_um2": 12645,
+        "power_uw": 13652
       }
     },
-    "index_generation_unit": {
-      "module_type": "ENCODING",
-      "implementation": "index_generator",
-      "count": 64,
+    "quick_sorting_unit": {
+      "module_type": "SORTING",
+      "implementation": "quick_sort",
+      "count": 1,
       "performance": {
-        "latency_cycles": 6,
+        "latency_cycles": 64,
         "throughput_ops_per_cycle": 1.0,
         "max_frequency_mhz": 1000
       },
       "resources": {
-        "area_um2": 4.80e6,
-        "power_uw": 1.04e6
+        "area_um2": 226,
+        "power_uw": 128
+      }
+    },
+    "volume_rendering_unit": {
+      "module_type": "VOLUME_RENDERING",
+      "implementation": "vru",
+      "count": 1,
+      "performance": {
+        "latency_cycles": 192,
+        "throughput_ops_per_cycle": 1.0,
+        "max_frequency_mhz": 1000
+      },
+      "resources": {
+        "area_um2": 23841,
+        "power_uw": 2610
       }
     }
   },

@@ -1,8 +1,6 @@
 {
   "accelerator_name": "ICARUS",
   "accelerator_type": "Neural Rendering Accelerator",
-  "description": "ICARUS - Inverse ray tracing accelerator for neural radiance fields",
-  "reference": "Rao et al., ICARUS: An Accelerator for Inverse Ray Tracing for NeRF, HPCA 2022",
   
   "hardware_modules": {
     "pos_encoding_unit": {
@@ -19,11 +17,11 @@
       "performance": {
         "latency_cycles": 130,
         "throughput_ops_per_cycle": 1.0,
-        "max_frequency_mhz": 1000
+        "max_frequency_mhz": 400
       },
       "resources": {
-        "area_um2": 6714,
-        "power_uw": 305,
+        "area_um2": 5200,
+        "power_uw": 330,
         "memory_kb": 16
       }
     },
@@ -42,11 +40,11 @@
       "performance": {
         "latency_cycles": 64,
         "throughput_ops_per_cycle": 1024.0,
-        "max_frequency_mhz": 1000
+        "max_frequency_mhz": 400
       },
       "resources": {
-        "area_um2": 5900000,
-        "power_uw": 400000,
+        "area_um2": 6300000,
+        "power_uw": 420000,
         "memory_kb": 2043
       }
     },
@@ -82,11 +80,11 @@
       "performance": {
         "latency_cycles": 192,
         "throughput_ops_per_cycle": 1.0,
-        "max_frequency_mhz": 1000
+        "max_frequency_mhz": 400
       },
       "resources": {
-        "area_um2": 4755,
-        "power_uw": 1917,
+        "area_um2": 4960,
+        "power_uw": 2110,
         "memory_kb": 64
       }
     },

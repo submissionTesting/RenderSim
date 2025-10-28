@@ -1,0 +1,179 @@
+{
+  "accelerator_name": "GSArch",
+  "accelerator_type": "3DGS Training Accelerator",
+  
+  "hardware_modules": {
+    "culling_conversion_unit": {
+      "module_type": "SAMPLING",
+      "implementation": "culling_conversion",
+      "count": 1,
+      "specifications": {
+        "tile_size": 16,
+        "max_gaussians": 100000,
+        "precision": "fp16"
+      },
+      "performance": {
+        "latency_cycles": 128,
+        "throughput_ops_per_cycle": 16.0,
+        "max_frequency_mhz": 700
+      },
+      "resources": {
+        "area_um2": 120000,
+        "power_uw": 120000,
+        "memory_kb": 64
+      }
+    },
+    
+    "sorting_unit": {
+      "module_type": "SORTING",
+      "implementation": "bitonic_sort",
+      "count": 1,
+      "specifications": {
+        "sort_size": 1024,
+        "precision": "fp16"
+      },
+      "performance": {
+        "latency_cycles": 64,
+        "throughput_ops_per_cycle": 8.0,
+        "max_frequency_mhz": 700
+      },
+      "resources": {
+        "area_um2": 60000,
+        "power_uw": 60000,
+        "memory_kb": 32
+      }
+    },
+
+    "tile_merging_unit": {
+      "module_type": "TILEMERGING",
+      "implementation": "tile_merger",
+      "count": 1,
+      "specifications": {
+        "tile_size": 16,
+        "merge_strategy": "hierarchical",
+        "precision": "fp16"
+      },
+      "performance": {
+        "latency_cycles": 32,
+        "throughput_ops_per_cycle": 4.0,
+        "max_frequency_mhz": 700
+      },
+      "resources": {
+        "area_um2": 103000,
+        "power_uw": 103000,
+        "memory_kb": 48
+      }
+    },
+
+    "feature_compute_unit": {
+      "module_type": "FEATURECOMPUTE",
+      "implementation": "feature_compute",
+      "count": 1,
+      "specifications": {
+        "feature_dimensions": 48,
+        "precision": "fp16"
+      },
+      "performance": {
+        "latency_cycles": 16,
+        "throughput_ops_per_cycle": 32.0,
+        "max_frequency_mhz": 700
+      },
+      "resources": {
+        "area_um2": 21000,
+        "power_uw": 21000,
+        "memory_kb": 16
+      }
+    },
+
+    "gradient_compute_unit": {
+      "module_type": "GRADIENTCOMPUTE",
+      "implementation": "gradient_compute",
+      "count": 1,
+      "specifications": {
+        "backward_pass": true,
+        "gradient_accumulation": true,
+        "precision": "fp16"
+      },
+      "performance": {
+        "latency_cycles": 48,
+        "throughput_ops_per_cycle": 16.0,
+        "max_frequency_mhz": 700
+      },
+      "resources": {
+        "area_um2": 36000,
+        "power_uw": 36000,
+        "memory_kb": 32
+      }
+    },
+
+    "gradient_pruning_unit": {
+      "module_type": "GRADIENTPRUNING",
+      "implementation": "gradient_prune",
+      "count": 1,
+      "specifications": {
+        "pruning_threshold": 0.01,
+        "informativeness_based": true,
+        "precision": "fp16"
+      },
+      "performance": {
+        "latency_cycles": 16,
+        "throughput_ops_per_cycle": 8.0,
+        "max_frequency_mhz": 700
+      },
+      "resources": {
+        "area_um2": 22000,
+        "power_uw": 22000,
+        "memory_kb": 16
+      }
+    },
+
+    "rearrangement_unit": {
+      "module_type": "REARRANGEMENT",
+      "implementation": "request_rearrange",
+      "count": 1,
+      "specifications": {
+        "backward_pass": true,
+        "bucket_strategy": "dynamic",
+        "precision": "fp16"
+      },
+      "performance": {
+        "latency_cycles": 8,
+        "throughput_ops_per_cycle": 16.0,
+        "max_frequency_mhz": 700
+      },
+      "resources": {
+        "area_um2": 3000,
+        "power_uw": 3000,
+        "memory_kb": 8
+      }
+    }
+  },
+
+  "sram_blocks": [
+    {"name": "gaussian_buffer", "unit": "TILEMERGING", "size_kb": 256},
+    {"name": "gradient_buffer", "unit": "GRADIENTCOMPUTE", "size_kb": 128},
+    {"name": "feature_buffer", "unit": "FEATURECOMPUTE", "size_kb": 64},
+    {"name": "tile_buffer", "unit": "TILEMERGING", "size_kb": 128}
+  ],
+
+  "interconnect": {
+    "type": "hierarchical_noc",
+    "topology": "mesh",
+    "bandwidth_gbps": 128,
+    "latency_cycles": 4
+  },
+
+  "memory_hierarchy": {
+    "l1_cache_kb": 64,
+    "l2_cache_kb": 512,
+    "dram_bandwidth_gbps": 256,
+    "dram_capacity_gb": 8
+  },
+
+  "training_specific": {
+    "backward_pass_support": true,
+    "gradient_accumulation": true,
+    "mixed_precision": true,
+    "optimizer_on_chip": false
+  }
+}

@@ -2,7 +2,7 @@
 
 <img src="operator.png" alt="Operator Overview" width="600"/>
 
-This folder provides the neural rendering operator taxonomy and performance modeling framework for realistic accelerator analysis.
+This folder provides the neural rendering operator taxonomy and performance modeling framework for realistic accelerator analysis, supporting both inference and training workloads.
 
 ## Live neural rendering integration
 
@@ -42,6 +42,7 @@ python CLI/main.py report scheduled.json --format html            # Analysis rep
 - **ENCODING** → Encoding modules: Hash encoding, positional encoding, feature encoding  
 - **COMPUTATION** → Field Computation modules: MLP, field computation, model inference
 - **BLENDING** → Volume Rendering modules: RGB/depth rendering, alpha blending
+- **OPTIMIZATION** → Training modules: Gradient computation, pruning, update merging
 
 ### **Realistic Characteristics Provided**
 - **Tensor Sizes**: Actual neural rendering dimensions (B×N×features)
@@ -57,11 +58,12 @@ Observe high-level operator characteristics with realistic neural rendering work
 python plot_roofline.py
 ```
 
-**Enhanced with Real Workloads**: Now includes actual neural rendering operator characteristics:
+**Enhanced with Real Workloads**: Includes actual neural rendering operator characteristics:
 - Arithmetic intensity from real NeRF execution
 - Memory requirements from traced workloads  
 - FLOP requirements from actual model inference
 - Hardware bottleneck identification
+- Support for both forward and backward pass analysis
 
 <img src="subplot_roofline.png" alt="Neural rendering operator characteristics" width="300"/>
 
@@ -77,6 +79,7 @@ python plot_operator.py
 - Realistic operator characteristics drive scheduling decisions
 - Hardware-aware mapping based on actual workload requirements
 - Performance prediction using real neural rendering execution patterns
+- Supports both inference and training pipeline visualization
 
 <img src="neurex_pipeline_graph_fine.png" alt="Grid based neural rendering pipeline operators" width="300"/>
 
@@ -101,7 +104,8 @@ hash_encoding = HashEncodingOperator(
     input_dim=3,             # 3D coordinates
     num_levels=16,           # Multi-resolution levels
     features_per_level=2,    # Feature encoding
-    bitwidth=16
+    bitwidth=16,
+    backward=False           # Can be set to True for training
 )
 
 mlp = MLPOperator(
@@ -110,14 +114,25 @@ mlp = MLPOperator(
     num_layers=3,            # Network depth
     layer_width=64,          # Hidden layer width
     out_dim=4,               # RGB + density
-    bitwidth=16
+    bitwidth=16,
+    backward=False           # Can be set to True for training
 )
 
 # Realistic characteristics automatically computed:
-# hash_encoding.get_num_ops() → 369,098,752 FLOPs
-# mlp.get_num_ops() → 3,355,443,200 FLOPs  
+# hash_encoding.get_num_ops() → 369,098,752 FLOPs (forward)
+# mlp.get_num_ops() → 3,355,443,200 FLOPs (forward)
+# Backward passes typically require ~2x compute for gradient computation
 # Total memory: ~70 MB for realistic neural rendering workload
 ```
+
+### **Supported Pipelines**
+
+The framework includes implementations of various neural rendering pipelines:
+
+**Inference Pipelines**: ICARUS, NeuRex, CICERO, GSCore, SRender  
+**Training Pipelines**: GSArch, GBU, Instant3D
+
+All pipelines support forward passes, with training pipelines additionally supporting backward passes through the `backward` parameter in operators.
 
 ### **Custom Operator Development**
 
@@ -143,6 +158,26 @@ print(f"Memory workload: {impact['transformation_summary']['total_memory_mb']}")
 
 # Ready for realistic hardware analysis!
 ```
+
+## Testing
+
+Comprehensive test suite available in the `utils/` directory:
+
+```bash
+# Quick validation (< 1 second)
+python utils/test_quick.py
+
+# Test all pipelines (inference + training)
+python utils/test_all_pipelines.py
+
+# Verify training support implementation
+python utils/test_verify_training.py
+
+# Generate pipeline visualizations
+python utils/test_visualization.py
+```
+
+See `utils/README.md` for detailed test documentation.
 
 ## Capabilities
 

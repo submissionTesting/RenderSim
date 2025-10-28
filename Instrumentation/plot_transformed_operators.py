@@ -62,7 +62,7 @@ class TransformedOperatorVisualizer:
             self._load_dag_data(dag_path)
         )
         
-        print(f"   ✅ Loaded {len(operators_graph)} realistic operators for visualization")
+        print(f"   [OK] Loaded {len(operators_graph)} realistic operators for visualization")
         print(f"   📊 Total FLOPs: {characteristics['total_flops']:,}")
         print(f"   💾 Total Memory: {characteristics['total_memory_bytes']/1024/1024:.1f} MB")
         
@@ -214,7 +214,7 @@ def create_neural_rendering_visualizations(dag_path: str = "execution_dag.pkl"):
     print("=" * 55)
     
     if not Path(dag_path).exists():
-        print(f"❌ DAG file not found: {dag_path}")
+        print(f"[ERROR] DAG file not found: {dag_path}")
         print(f"💡 Generate with: python nerfstudio/nerfstudio/scripts/eval.py ... --enable-trace")
         return None
     
@@ -233,7 +233,7 @@ def create_neural_rendering_visualizations(dag_path: str = "execution_dag.pkl"):
         return results
         
     except Exception as e:
-        print(f"❌ Visualization failed: {e}")
+        print(f"[ERROR] Visualization failed: {e}")
         import traceback
         traceback.print_exc()
         return None

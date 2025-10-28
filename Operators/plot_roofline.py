@@ -14,6 +14,19 @@ from operators.computation_operator import ComputationOperator, MLPOperator, Sph
 from operators.encoding_operator import EncodingOperator, HashEncodingOperator, RFFEncodingOperator
 from operators.sampling_operator import SamplingOperator, UniformSamplerOperator, FrustrumCullingOperator, ProjectionOperator
 from operators.blending_operator import BlendingOperator, GaussianAlphaBlendOperator, RGBRendererOperator, DensityRendererOperator, SortingOperator
+from operators.optimization_operator import OptimizationOperator
+
+# Import custom operators from new training pipelines
+from pipelines.gsarch_pipeline import (
+    TileMergingOperator, FeatureComputeOperator, 
+    GradientComputeOperator, GradientPruneOperator, RearrangementOperator
+)
+from pipelines.gbu_pipeline import (
+    RowProcessingOperator, RowGenerationOperator, DecompBinningOperator
+)
+from pipelines.instant3d_pipeline import (
+    FeedForwardReadMapper, BackpropUpdateMerger
+)
 
 def plot_subplot_roofline():
     # Create A100 GPU System instance
@@ -30,14 +43,19 @@ def plot_subplot_roofline():
     encoding_operators = []
     sampling_operators = []
     blending_operators = []
+    optimization_operators = []  # New category for training-specific operators
     
     # Initialize computation operators
     computation_operators.append(MLPOperator(dim, in_dim=32, num_layers=4, layer_width=128, out_dim=3))
     computation_operators.append(SphericalHarmonicsOperator(dim, degree=4))
+    # Add backward versions for training
+    computation_operators.append(MLPOperator(dim, in_dim=32, num_layers=4, layer_width=128, out_dim=3, backward=True))
     
     # Initialize encoding operators
     encoding_operators.append(HashEncodingOperator(dim, num_levels=16, features_per_level=2))
     encoding_operators.append(RFFEncodingOperator(dim, input_dim=3, num_features=128))
+    # Add backward version
+    encoding_operators.append(HashEncodingOperator(dim, num_levels=16, features_per_level=2, backward=True))
     
     # Initialize sampling operators
     sampling_operators.append(UniformSamplerOperator(dim, sampler_type="uniform"))
@@ -49,12 +67,33 @@ def plot_subplot_roofline():
     blending_operators.append(DensityRendererOperator(dim, method="median"))
     blending_operators.append(SortingOperator(dim, sort_by="depth"))
     blending_operators.append(GaussianAlphaBlendOperator(dim))
+    # Add backward versions
+    blending_operators.append(RGBRendererOperator(dim, backward=True))
+    blending_operators.append(GaussianAlphaBlendOperator(dim, backward=True))
+    
+    # Initialize optimization operators from new training pipelines
+    # GSArch operators
+    optimization_operators.append(TileMergingOperator(dim))
+    optimization_operators.append(FeatureComputeOperator(dim))
+    optimization_operators.append(GradientComputeOperator(dim, backward=True))
+    optimization_operators.append(GradientPruneOperator(dim, backward=True))
+    optimization_operators.append(RearrangementOperator(dim, backward=True))
+    
+    # GBU operators
+    optimization_operators.append(RowProcessingOperator(dim))
+    optimization_operators.append(RowGenerationOperator(dim))
+    optimization_operators.append(DecompBinningOperator(dim))
+    
+    # Instant3D operators
+    optimization_operators.append(FeedForwardReadMapper(dim))
+    optimization_operators.append(BackpropUpdateMerger(dim, backward=True))
     
     # Create dataframes for each operator type
     computation_df = create_operator_dataframe(computation_operators, A100_GPU)
     encoding_df = create_operator_dataframe(encoding_operators, A100_GPU)
     sampling_df = create_operator_dataframe(sampling_operators, A100_GPU)
     blending_df = create_operator_dataframe(blending_operators, A100_GPU)
+    optimization_df = create_operator_dataframe(optimization_operators, A100_GPU)
     
     # For debugging: print column names and some sample data
     print("\nComputation DF Columns:", computation_df.columns.tolist())
@@ -67,12 +106,18 @@ def plot_subplot_roofline():
         print("\nSample Encoding DF row:")
         print(encoding_df.iloc[0])
     
+    # Same for Optimization DF
+    if not optimization_df.empty:
+        print("\nSample Optimization DF row:")
+        print(optimization_df.iloc[0])
+    
     # Plot all operators in a two-subplot figure
     plot_subplots(
         computation_df=computation_df,
         encoding_df=encoding_df,
         sampling_df=sampling_df,
         blending_df=blending_df,
+        optimization_df=optimization_df,
         system=A100_GPU,
         save_path="subplot_roofline.png"
     )
@@ -82,6 +127,7 @@ def plot_subplot_roofline():
     encoding_df.to_csv("encoding_roofline.csv", index=False)
     sampling_df.to_csv("sampling_roofline.csv", index=False)
     blending_df.to_csv("blending_roofline.csv", index=False)
+    optimization_df.to_csv("optimization_roofline.csv", index=False)
     
     print("Subplot roofline analysis completed and saved to CSV and PNG files.")
 
@@ -100,6 +146,8 @@ def create_operator_dataframe(operators, system):
             DensityRendererOperator,
             RGBRendererOperator,
         )
+        # Import specific optimization operators that use FLOPs
+        from pipelines.gsarch_pipeline import FeatureComputeOperator, GradientComputeOperator
 
         flop_classes = (
             ComputationOperator,
@@ -108,6 +156,8 @@ def create_operator_dataframe(operators, system):
             GaussianAlphaBlendOperator,
             DensityRendererOperator,
             RGBRendererOperator,
+            FeatureComputeOperator,  # Uses FLOPs for feature computation
+            GradientComputeOperator,  # Uses FLOPs for gradient computation
         )
 
         metric = 'FLOPs' if isinstance(operator, flop_classes) else 'OPs'
@@ -123,7 +173,7 @@ def find_throughput_column(df):
             return column
     return None
 
-def plot_subplots(computation_df, encoding_df, sampling_df, blending_df, system, save_path):
+def plot_subplots(computation_df, encoding_df, sampling_df, blending_df, optimization_df, system, save_path):
     """Plot all operators in two separate subplots."""
     unit = Unit()
     
@@ -149,7 +199,7 @@ def plot_subplots(computation_df, encoding_df, sampling_df, blending_df, system,
     
     # Find max_x for proper scaling of the x-axis
     all_op_intensities = []
-    for df in [computation_df, encoding_df, sampling_df, blending_df]:
+    for df in [computation_df, encoding_df, sampling_df, blending_df, optimization_df]:
         all_op_intensities.extend(df['Op Intensity'].tolist())
     max_x = max(all_op_intensities)
     min_x = min(all_op_intensities)
@@ -166,12 +216,14 @@ def plot_subplots(computation_df, encoding_df, sampling_df, blending_df, system,
     enc_thrpt_col = find_throughput_column(encoding_df)
     samp_thrpt_col = find_throughput_column(sampling_df)
     blend_thrpt_col = find_throughput_column(blending_df)
+    opt_thrpt_col = find_throughput_column(optimization_df)
     
     # Print throughput columns for debugging
     print(f"Computation throughput column: {comp_thrpt_col}")
     print(f"Encoding throughput column: {enc_thrpt_col}")
     print(f"Sampling throughput column: {samp_thrpt_col}")
     print(f"Blending throughput column: {blend_thrpt_col}")
+    print(f"Optimization throughput column: {opt_thrpt_col}")
     
     # ====== SUBPLOT 1: OPERATORS MEASURED IN FLOPs ======
     # Calculate peak throughput for FLOPs
@@ -215,6 +267,7 @@ def plot_subplots(computation_df, encoding_df, sampling_df, blending_df, system,
         'Encoding':    {'df': encoding_df,    'thrpt_col': enc_thrpt_col,  'base_color': '#FF1E1E', 'marker': 's'},
         'Sampling':    {'df': sampling_df,    'thrpt_col': samp_thrpt_col, 'base_color': '#00CC00', 'marker': '^'},
         'Blending':    {'df': blending_df,    'thrpt_col': blend_thrpt_col,'base_color': '#8A00E6', 'marker': 'd'},
+        'Optimization': {'df': optimization_df, 'thrpt_col': opt_thrpt_col, 'base_color': '#FF8C00', 'marker': 'p'},  # Orange pentagon for optimization
     }
 
     # --- Plot FLOP‑based operators on ax1 ---
@@ -270,7 +323,8 @@ def plot_subplots(computation_df, encoding_df, sampling_df, blending_df, system,
     
     # Collect all non-computation throughput values to determine appropriate y-axis scale
     all_throughputs = []
-    for df, col in [(encoding_df, enc_thrpt_col), (sampling_df, samp_thrpt_col), (blending_df, blend_thrpt_col)]:
+    for df, col in [(encoding_df, enc_thrpt_col), (sampling_df, samp_thrpt_col), 
+                    (blending_df, blend_thrpt_col), (optimization_df, opt_thrpt_col)]:
         if not df.empty and col is not None:
             all_throughputs.extend(df[col].tolist())
     

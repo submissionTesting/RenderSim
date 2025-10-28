@@ -1,5 +1,7 @@
 # RenderSim
 
+# ★ ★ ★ See [CHANGELOG.md](CHANGELOG.md) for the changes.
+
 RenderSim is a small, self-contained simulator for neural rendering accelerators. Given an execution DAG (.pkl), it maps operators to a configurable hardware model, schedules them, and writes PPA report.
 
 <img src="rendersim.png" alt="RenderSim overview" width="720"/>

@@ -225,7 +225,7 @@ def enhance_dag_with_operator_types(dag_data: dict) -> dict:
             node_info['hardware_type'] = hardware_type
             nodes_updated += 1
     
-    print(f"✅ Enhanced DAG: Updated {nodes_updated} nodes with operator types")
+    print(f"[OK] Enhanced DAG: Updated {nodes_updated} nodes with operator types")
     return enhanced_dag
 
 def get_operator_statistics(dag_data: dict) -> Dict[str, int]:

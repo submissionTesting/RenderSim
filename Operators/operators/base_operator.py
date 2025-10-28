@@ -3,13 +3,16 @@
 from utils.unit import Unit
 
 class Operator(object):
-    def __init__(self, dim, bitwidth: int = 16, graph=None):
+    def __init__(self, dim, bitwidth: int = 16, graph=None, backward: bool = False):
         self.dim = dim
         # Numerical precision (bits per element) set at instantiation time.
         # All subclasses and pipelines should now pass the desired precision
         # via this constructor argument instead of assigning to the attribute
         # after creation.
         self.bitwidth = bitwidth
+        # Execution direction. When True, this node models the backward pass
+        # counterpart of the forward operator (e.g., gradient propagation).
+        self.is_backward = bool(backward)
 
         # --- Data‑flow graph bookkeeping --------------------------------
         # Each Operator can act as a node in a larger dependency graph.
@@ -37,18 +40,27 @@ class Operator(object):
     def get_op_type(self):
         return self.op_type
 
+    def get_label(self):
+        """Human-friendly label for plotting. Appends (B) for backward ops."""
+        base = self.get_op_type()
+        return f"{base} (B)" if self.is_backward else base
+
     def get_tensors(self):
         # Default implementation derives tensor counts from shape helpers.
         # Subclasses may override for bespoke behaviour.
         try:
             import math
-            in_shapes = self.get_input_tensor_shapes()
-            out_shape = self.get_output_tensor_shape()
+            if self.is_backward and hasattr(self, "get_backward_input_tensor_shapes"):
+                in_shapes = self.get_backward_input_tensor_shapes()
+                out_shape = self.get_backward_output_tensor_shape()
+            else:
+                in_shapes = self.get_input_tensor_shapes()
+                out_shape = self.get_output_tensor_shape()
 
             if not in_shapes or out_shape is None:
                 raise NotImplementedError
 
-            # activation input (first), weight input (second if exists)
+            # activation/gradient input (first), weight/param input (second if exists)
             input_a = math.prod(in_shapes[0])
             input_b = math.prod(in_shapes[1]) if len(in_shapes) > 1 else 0
             output = math.prod(out_shape)
@@ -57,6 +69,9 @@ class Operator(object):
             raise NotImplementedError("Subclasses must implement get_tensors() or the shape helpers.")
 
     def get_num_ops(self):
+        # Allow subclasses to provide backward-specific flops.
+        if self.is_backward and hasattr(self, "get_backward_num_ops"):
+            return self.get_backward_num_ops()
         raise NotImplementedError("Subclasses must implement get_num_ops()")
 
     def get_effective_dim_len(self):
@@ -107,7 +122,8 @@ class Operator(object):
         }
 
     def __str__(self):
-        return f"Operator type: {self.get_op_type()}, dim: {self.dim}"
+        phase = "BWD" if self.is_backward else "FWD"
+        return f"Operator type: {self.get_op_type()} [{phase}], dim: {self.dim}"
 
     # ------------------------------------------------------------------
     #  Graph helpers
@@ -170,3 +186,10 @@ class Operator(object):
     def get_output_tensor_shape(self):
         """Return tuple shape for the output tensor."""
         raise NotImplementedError
+
+    # Optional backward-shape helpers; default to forward shapes if not overridden
+    def get_backward_input_tensor_shapes(self):
+        return self.get_input_tensor_shapes()
+
+    def get_backward_output_tensor_shape(self):
+        return self.get_output_tensor_shape()

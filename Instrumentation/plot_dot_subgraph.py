@@ -1,12 +1,26 @@
 #!/usr/bin/env python3
 """
-Extract a subgraph cluster from a DOT file and render it to PNG/SVG.
+Extract a subgraph cluster from a DOT file and optionally render it to PNG/SVG.
+
+Default behavior: write only the subgraph DOT. Use flags to render figures:
 
 Usage:
+  # DOT-only (default)
   python plot_dot_subgraph.py \
     --dot /path/to/execution_dag_grouped.dot \
-    --cluster-index 0  # or: coarse | fine | other | coarse:0 \
+    --cluster-index 0 \
     --out-prefix /path/to/execution_dag_component0
+
+  # Render PNG (in addition to DOT)
+  python plot_dot_subgraph.py ... --png
+
+  # Render SVG (in addition to DOT)
+  python plot_dot_subgraph.py ... --svg
+
+  # Render both
+  python plot_dot_subgraph.py ... --png --svg
+
+Cluster selector accepts: index (0,1,2), name (coarse|fine|other), or name:index (e.g., coarse:0)
 """
 
 from __future__ import annotations
@@ -130,19 +144,24 @@ def build_cluster_dot(original_lines: List[str], cluster_label: str) -> List[str
     return out
 
 
-def try_graphviz_render(dot_path: Path, out_prefix: Path) -> bool:
+def try_graphviz_render(dot_path: Path, out_prefix: Path, *, enable_png: bool, enable_svg: bool) -> bool:
     dot_bin = shutil.which("dot")
     if not dot_bin:
         return False
     try:
-        subprocess.run([dot_bin, "-Tpng", "-o", str(out_prefix.with_suffix(".png")), str(dot_path)], check=True)
-        subprocess.run([dot_bin, "-Tsvg", "-o", str(out_prefix.with_suffix(".svg")), str(dot_path)], check=True)
-        return True
+        rendered_any = False
+        if enable_png:
+            subprocess.run([dot_bin, "-Tpng", "-o", str(out_prefix.with_suffix(".png")), str(dot_path)], check=True)
+            rendered_any = True
+        if enable_svg:
+            subprocess.run([dot_bin, "-Tsvg", "-o", str(out_prefix.with_suffix(".svg")), str(dot_path)], check=True)
+            rendered_any = True
+        return rendered_any
     except subprocess.CalledProcessError:
         return False
 
 
-def fallback_networkx_render(dot_path: Path, out_prefix: Path) -> None:
+def fallback_networkx_render(dot_path: Path, out_prefix: Path, *, enable_png: bool, enable_svg: bool) -> None:
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -154,8 +173,10 @@ def fallback_networkx_render(dot_path: Path, out_prefix: Path) -> None:
     plt.figure(figsize=(24, 16), dpi=200)
     nx.draw_networkx(G, pos=pos, with_labels=True, node_size=300, width=0.6, font_size=8)
     plt.tight_layout()
-    for ext in (".png", ".svg"):
-        plt.savefig(str(out_prefix) + ext, bbox_inches="tight")
+    if enable_png:
+        plt.savefig(str(out_prefix.with_suffix('.png')), bbox_inches="tight")
+    if enable_svg:
+        plt.savefig(str(out_prefix.with_suffix('.svg')), bbox_inches="tight")
     plt.close()
 
 
@@ -163,7 +184,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Plot a specific subgraph cluster from DOT")
     parser.add_argument("--dot", required=True, type=Path, help="Path to grouped DOT file")
     parser.add_argument("--cluster-index", required=True, type=str, help="Cluster selector: index (0,1,2), name (coarse|fine|other), or name:index (e.g., coarse:0)")
-    parser.add_argument("--out-prefix", required=True, type=Path, help="Output path prefix for PNG/SVG/DOT")
+    parser.add_argument("--out-prefix", required=True, type=Path, help="Output path prefix (DOT always; PNG/SVG optional)")
+    parser.add_argument("--png", action="store_true", help="Render PNG in addition to DOT")
+    parser.add_argument("--svg", action="store_true", help="Render SVG in addition to DOT")
     args = parser.parse_args()
 
     lines = read_lines(args.dot)
@@ -179,12 +202,20 @@ def main() -> None:
     write_lines(out_dot, sub_lines)
     print(f"[plot-dot-subgraph] Wrote subgraph DOT: {out_dot}")
 
-    if try_graphviz_render(out_dot, args.out_prefix):
-        print(f"[plot-dot-subgraph] Rendered with graphviz: {args.out_prefix.with_suffix('.png')}, {args.out_prefix.with_suffix('.svg')}")
-    else:
-        print("[plot-dot-subgraph] graphviz 'dot' not found or failed; using networkx fallback")
-        fallback_networkx_render(out_dot, args.out_prefix)
-        print(f"[plot-dot-subgraph] Rendered with networkx: {args.out_prefix.with_suffix('.png')}, {args.out_prefix.with_suffix('.svg')}")
+    # Only render figures if requested
+    if args.png or args.svg:
+        if try_graphviz_render(out_dot, args.out_prefix, enable_png=args.png, enable_svg=args.svg):
+            if args.png:
+                print(f"[plot-dot-subgraph] Rendered with graphviz: {args.out_prefix.with_suffix('.png')}")
+            if args.svg:
+                print(f"[plot-dot-subgraph] Rendered with graphviz: {args.out_prefix.with_suffix('.svg')}")
+        else:
+            print("[plot-dot-subgraph] graphviz 'dot' not found or failed; using networkx fallback")
+            fallback_networkx_render(out_dot, args.out_prefix, enable_png=args.png, enable_svg=args.svg)
+            if args.png:
+                print(f"[plot-dot-subgraph] Rendered with networkx: {args.out_prefix.with_suffix('.png')}")
+            if args.svg:
+                print(f"[plot-dot-subgraph] Rendered with networkx: {args.out_prefix.with_suffix('.svg')}")
 
 
 if __name__ == "__main__":

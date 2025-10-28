@@ -88,33 +88,122 @@ class OperatorFactory:
                 )
             
             elif 'COMPUTATION' in op_type:
-                # NeRF baseline MLP: 8 layers, 256 width, skip at layer 4
-                # Infer input/output dims from context when possible
-                in_dim = 256  # default if preceded by PE
-                out_dim = 4
-                skip_connections = (4,)
-                if 'DensityFieldHead' in function_name:
-                    out_dim = 1
-                elif 'RGBFieldHead' in function_name:
-                    out_dim = 3
-                # Try to infer input dim from immediate predecessors in the traced DAG if available
+                # Prefer precise configuration from tracing metadata when available
+                fn = str(function_name)
+                nd = node_data or {}
+
+                # FieldHead (single Linear) — model as 1‑layer MLP with explicit in/out dims
+                if 'field_components.field_heads.' in fn:
+                    in_dim = None
+                    out_dim = None
+                    try:
+                        in_dim = int(nd.get('field_head_in_dim')) if nd.get('field_head_in_dim') is not None else None
+                    except Exception:
+                        in_dim = None
+                    try:
+                        out_dim = int(nd.get('field_head_out_dim')) if nd.get('field_head_out_dim') is not None else None
+                    except Exception:
+                        out_dim = None
+
+                    # Fallback: parse from shapes (B,N,C)
+                    if in_dim is None:
+                        try:
+                            import re
+                            ins = nd.get('input_shapes') or ''
+                            m = re.search(r"\((?:\d+,\s*){2}(\d+)\)", str(ins))
+                            if m:
+                                in_dim = int(m.group(1))
+                        except Exception:
+                            pass
+                    if out_dim is None:
+                        try:
+                            import re
+                            outs = nd.get('output_shapes') or ''
+                            m = re.search(r"\((?:\d+,\s*){2}(\d+)\)", str(outs))
+                            if m:
+                                out_dim = int(m.group(1))
+                        except Exception:
+                            pass
+
+                    # Reasonable fallbacks if still unknown
+                    if in_dim is None:
+                        in_dim = 128
+                    if out_dim is None:
+                        out_dim = 1 if 'DensityFieldHead' in fn else 3 if 'RGBFieldHead' in fn else 4
+
+                    return MLPOperator(
+                        dim,
+                        in_dim=in_dim,
+                        num_layers=1,
+                        layer_width=max(in_dim, out_dim),
+                        out_dim=out_dim,
+                        skip_connections=(),
+                        use_bias=True,
+                        bitwidth=16
+                    )
+
+                # MLP.forward — use exact params captured by tracer if present
+                in_dim = None
+                out_dim = None
+                num_layers = None
+                layer_width = None
+                skip_connections = None
+
                 try:
-                    pred_ids = node_data.get('preds') or []
-                    # If earlier in this integration we built adjacency maps, they are outside this scope.
-                    # However, instrumentation may stamp input/output_shapes strings we can parse.
-                    out_sig = (node_data.get('input_shapes') or node_data.get('output_shapes') or '')
-                    # Try to parse something like (B, N, C)
-                    import re
-                    m = re.search(r"\((?:\d+,\s*){2}(\d+)\)", str(out_sig))
-                    if m:
-                        in_dim = int(m.group(1))
+                    if nd.get('mlp_in_dim') is not None:
+                        in_dim = int(nd['mlp_in_dim'])
                 except Exception:
                     pass
+                try:
+                    if nd.get('mlp_out_dim') is not None:
+                        out_dim = int(nd['mlp_out_dim'])
+                except Exception:
+                    pass
+                try:
+                    if nd.get('mlp_num_layers') is not None:
+                        num_layers = int(nd['mlp_num_layers'])
+                except Exception:
+                    pass
+                try:
+                    if nd.get('mlp_layer_width') is not None:
+                        layer_width = int(nd['mlp_layer_width'])
+                except Exception:
+                    pass
+                try:
+                    sc = nd.get('mlp_skip_connections')
+                    if sc is not None:
+                        skip_connections = tuple(int(x) for x in sc) if isinstance(sc, (list, tuple)) else None
+                except Exception:
+                    pass
+
+                # Fallbacks from shapes if any are missing
+                if in_dim is None:
+                    try:
+                        import re
+                        ins = nd.get('input_shapes') or nd.get('output_shapes') or ''
+                        m = re.search(r"\((?:\d+,\s*){2}(\d+)\)", str(ins))
+                        if m:
+                            in_dim = int(m.group(1))
+                    except Exception:
+                        pass
+
+                # Reasonable defaults if still unknown (vanilla NeRF base MLP)
+                if in_dim is None:
+                    in_dim = 256
+                if num_layers is None:
+                    num_layers = 8
+                if layer_width is None:
+                    layer_width = 256
+                if out_dim is None:
+                    out_dim = layer_width
+                if skip_connections is None:
+                    skip_connections = (4,)
+
                 return MLPOperator(
                     dim,
                     in_dim=in_dim,
-                    num_layers=8,
-                    layer_width=256,
+                    num_layers=num_layers,
+                    layer_width=layer_width,
                     out_dim=out_dim,
                     skip_connections=skip_connections,
                     use_bias=True,
@@ -677,8 +766,46 @@ class DAGToOperatorsIntegration:
                 print(f"   🎯 Dims present: {b} rays × {n} samples")
         except Exception:
             pass
+
+        # Optional: Transitive reduction on operator edges to remove redundant parent→grandchild links
+        # Example: if A→B and B→C exist, drop A→C. Keeps graph minimal for readability.
+        try:
+            # Build operator graph in NetworkX
+            Gop = nx.DiGraph()
+            graph_nodes = list(operators_graph.nodes)
+            idx = {op: i for i, op in enumerate(graph_nodes)}
+            for op in graph_nodes:
+                Gop.add_node(idx[op])
+            for op in graph_nodes:
+                for ch in getattr(op, 'children', []) or []:
+                    if ch in idx:
+                        Gop.add_edge(idx[op], idx[ch])
+            if nx.is_directed_acyclic_graph(Gop):
+                tr = nx.algorithms.dag.transitive_reduction(Gop)
+                # Remove edges not in transitive reduction
+                to_remove = set(Gop.edges()) - set(tr.edges())
+                if to_remove:
+                    removed = 0
+                    # Build reverse map for quick lookup
+                    rev = {i: op for op, i in idx.items()}
+                    for u, v in to_remove:
+                        src = rev.get(u)
+                        dst = rev.get(v)
+                        if src is None or dst is None:
+                            continue
+                        try:
+                            if hasattr(src, 'children') and dst in src.children:
+                                src.children = [c for c in src.children if c is not dst]
+                                removed += 1
+                        except Exception:
+                            continue
+                    if removed:
+                        print(f"   ✂️  Transitive reduction removed {removed} redundant edges")
+        except Exception:
+            # Never fail transformation due to a visualization/cleanup step
+            pass
         
-        print(f"   ✅ Created {len(operators_graph)} realistic operators")
+        print(f"   [OK] Created {len(operators_graph)} realistic operators")
         print(f"   📊 Total FLOPs: {characteristics['total_flops']:,}")
         print(f"   💾 Total Memory: {characteristics['total_memory_bytes']:,} bytes ({characteristics['total_memory_bytes']/1024/1024:.1f} MB)")
         
@@ -819,7 +946,7 @@ class DAGToOperatorsIntegration:
                 for a, b in zip(ids[:-1], ids[1:]):
                     scheduler_graph.edges.append((a, b))
         
-        print(f"   ✅ Converted to Scheduler.IR with {len(scheduler_graph.nodes)} nodes")
+        print(f"   [OK] Converted to Scheduler.IR with {len(scheduler_graph.nodes)} nodes")
         return scheduler_graph
     
     def analyze_transformation_impact(self, original_dag: Dict[str, Any], characteristics: Dict[str, Any]) -> Dict[str, Any]:
@@ -919,6 +1046,13 @@ def load_and_transform_traced_dag(dag_path: str) -> Tuple[SchedulerOperatorGraph
                 nodes = nodes[:max_nodes]
             return nodes
 
+        # Default: emit SVG alongside PNG unless user explicitly disabled
+        try:
+            if os.environ.get("RENDERSIM_PLOT_SVG") in (None, ""):
+                os.environ["RENDERSIM_PLOT_SVG"] = "1"
+        except Exception:
+            pass
+
         if _should("RENDERSIM_PLOT_OPERATORS"):
             # Coarse graph is small; no filtering needed
             operators_graph.plot_graph(title="Operator Graph", save_path="operator_graph.png")
@@ -955,14 +1089,14 @@ if __name__ == "__main__":
             scheduler_graph, impact = load_and_transform_traced_dag(dag_path)
             
             print(f"\n🧪 Integration Test Results:")
-            print(f"✅ Scheduler.IR nodes: {len(scheduler_graph.nodes)}")
-            print(f"✅ Scheduler.IR edges: {len(scheduler_graph.edges)}")
-            print(f"✅ Ready for realistic neural rendering scheduling!")
+            print(f"[OK] Scheduler.IR nodes: {len(scheduler_graph.nodes)}")
+            print(f"[OK] Scheduler.IR edges: {len(scheduler_graph.edges)}")
+            print(f"[OK] Ready for realistic neural rendering scheduling!")
             
         except Exception as e:
-            print(f"❌ Integration failed: {e}")
+            print(f"[ERROR] Integration failed: {e}")
             import traceback
             traceback.print_exc()
     else:
-        print(f"❌ DAG file not found: {dag_path}")
+        print(f"[ERROR] DAG file not found: {dag_path}")
         print(f"💡 Generate with: python nerfstudio/nerfstudio/scripts/eval.py ... --enable-trace") 

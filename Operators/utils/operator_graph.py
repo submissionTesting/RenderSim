@@ -70,25 +70,57 @@ def _build_graphviz(nodes):
             seen.add(n)
 
     g = Digraph(graph_attr={"rankdir": "TB", "nodesep": "0.6", "ranksep": "0.7"})
-    # Allow higher resolution via env var (default Graphviz ~96 DPI). Example: RENDERSIM_PLOT_DPI=300
+    # Allow higher resolution and larger labels via env vars
+    #   RENDERSIM_PLOT_DPI           e.g., 600
+    #   RENDERSIM_PLOT_NODE_FONTSIZE e.g., 20
+    #   RENDERSIM_PLOT_EDGE_FONTSIZE e.g., 14
+    #   RENDERSIM_PLOT_NODE_SIZE     e.g., 1.6 (applied to width/height)
     try:
         dpi_env = os.environ.get("RENDERSIM_PLOT_DPI")
         if dpi_env:
             g.graph_attr["dpi"] = str(int(float(dpi_env)))
     except Exception:
         pass
+    try:
+        _NODE_FONTSIZE = int(float(os.environ.get("RENDERSIM_PLOT_NODE_FONTSIZE", "10")))
+    except Exception:
+        _NODE_FONTSIZE = 10
+    try:
+        _EDGE_FONTSIZE = int(float(os.environ.get("RENDERSIM_PLOT_EDGE_FONTSIZE", "8")))
+    except Exception:
+        _EDGE_FONTSIZE = 8
+    try:
+        _NODE_SIZE = float(os.environ.get("RENDERSIM_PLOT_NODE_SIZE", "1.0"))
+    except Exception:
+        _NODE_SIZE = 1.0
 
     idx_map = {op: str(i) for i, op in enumerate(flat_nodes_uni)}
 
     # add nodes
     for op, idx in idx_map.items():
-        label = op.get_op_type()
+        try:
+            label = op.get_label()
+        except Exception:
+            label = op.get_op_type()
         # append extra info for certain ops
         from operators.computation_operator import MLPOperator
         from operators.encoding_operator import HashEncodingOperator, RFFEncodingOperator
 
         if isinstance(op, MLPOperator):
             label += f"\nL{op.num_layers}×{op.layer_width}"
+            try:
+                in_d = getattr(op, "in_dim", None)
+                out_d = getattr(op, "out_dim", None)
+                if in_d is not None and out_d is not None:
+                    label += f"\n{in_d}→{out_d}"
+            except Exception:
+                pass
+            try:
+                sc = getattr(op, "skip_connections", None)
+                if sc:
+                    label += "\nS" + ",".join(str(x) for x in (list(sc) if not isinstance(sc, (list, tuple)) else sc))
+            except Exception:
+                pass
         elif isinstance(op, HashEncodingOperator):
             label += f"\nLvls {op.num_levels}"
         elif 'RFFEncodingOperator' in type(op).__name__:
@@ -107,9 +139,9 @@ def _build_graphviz(nodes):
             style="filled",
             fillcolor=COLOR_MAP.get(cat, COLOR_MAP["Unknown"]),
             fixedsize="true",
-            width="1",
-            height="1",
-            fontsize="10"
+            width=str(_NODE_SIZE),
+            height=str(_NODE_SIZE),
+            fontsize=str(_NODE_FONTSIZE)
         )
 
     # ------------------------------------------------------------------
@@ -154,7 +186,7 @@ def _build_graphviz(nodes):
                 parent_label = _safe_output_shape(parent)
                 child_label  = _safe_input_shapes(op)
                 edge_label   = f"{parent_label} → {child_label}"
-                g.edge(idx_map[parent], idx, label=edge_label, fontsize="8")
+                g.edge(idx_map[parent], idx, label=edge_label, fontsize=str(_EDGE_FONTSIZE))
 
     # No extra dashed edges needed – leaf‑level wiring already handled.
 
@@ -281,6 +313,14 @@ class OperatorGraph:
                 save_base = save_path
             g.render(save_base, format="png", cleanup=True)
             print(f"Saved pipeline graph → {save_base}.png")
+            # Optional SVG for crisp zoom
+            try:
+                svg_env = os.environ.get("RENDERSIM_PLOT_SVG", "0").strip().lower()
+                if svg_env in ("1", "true", "yes", "on"):
+                    g.render(save_base, format="svg", cleanup=True)
+                    print(f"Saved pipeline graph → {save_base}.svg")
+            except Exception:
+                pass
         else:
             g.view()
 
@@ -322,5 +362,13 @@ class FineOperatorGraph(OperatorGraph):
                 save_base = save_path
             g.render(save_base, format="png", cleanup=True)
             print(f"Saved fine pipeline graph → {save_base}.png")
+            # Optional SVG for crisp zoom
+            try:
+                svg_env = os.environ.get("RENDERSIM_PLOT_SVG", "0").strip().lower()
+                if svg_env in ("1", "true", "yes", "on"):
+                    g.render(save_base, format="svg", cleanup=True)
+                    print(f"Saved fine pipeline graph → {save_base}.svg")
+            except Exception:
+                pass
         else:
             g.view() 

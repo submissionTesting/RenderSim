@@ -6,8 +6,8 @@ import numpy as np
 
 class EncodingOperator(Operator):
     """Base class for all encoding operators."""
-    def __init__(self, dim, bitwidth: int = 16, graph=None):
-        super().__init__(dim, bitwidth, graph)
+    def __init__(self, dim, bitwidth: int = 16, graph=None, backward: bool = False):
+        super().__init__(dim, bitwidth, graph, backward=backward)
         
     def get_effective_dim_len(self):
         return 2
@@ -24,7 +24,8 @@ class HashEncodingOperator(EncodingOperator):
                  implementation: Literal["tcnn", "torch"] = "tcnn",
                  interpolation: Optional[Literal["Nearest", "Linear", "Smoothstep"]] = None,
                  bitwidth: int = 16,
-                 graph=None):
+                 graph=None,
+                 backward: bool = False):
         self.input_dim = input_dim
         self.num_levels = num_levels
         self.min_res = min_res
@@ -38,7 +39,7 @@ class HashEncodingOperator(EncodingOperator):
         # Cache placeholder for lazily‑constructed stage operators
         self.sub_ops = None  # populated on first call to _build_sub_ops()
 
-        super().__init__(dim, bitwidth, graph)
+        super().__init__(dim, bitwidth, graph, backward=backward)
         self.op_type = "HashEncoding"
 
     def get_tensors(self):
@@ -104,6 +105,9 @@ class HashEncodingOperator(EncodingOperator):
         """Aggregate FLOP counts from the three modular stages."""
         return sum(op.get_num_ops() for op in self._build_sub_ops())
 
+    def get_backward_num_ops(self):
+        return sum(getattr(op, "get_backward_num_ops", op.get_num_ops)() for op in self._build_sub_ops())
+
     # shape helpers
     def get_input_tensor_shapes(self):
         B, N = self.dim[:2]
@@ -129,6 +133,9 @@ class IndexGenerationOperator(HashEncodingOperator):
         # hash = (xv · 1) ⊕ (yv · P1) ⊕ (zv · P2) mod T
         generate_address = 2 * (B * N * self.num_levels * 8)
         return generate_weights + generate_address
+
+    def get_backward_num_ops(self):
+        return self.get_num_ops()
 
     def get_tensors(self):
         """Coordinates in → hashed indices (8 per level) + weights (8 per level)."""
@@ -160,6 +167,9 @@ class HashLookupOperator(HashEncodingOperator):
         B, N = self.dim[:2]
         # One memory read per corner-feature fetch; negligible arithmetic.
         return 0 # 1 * (B * N * self.num_levels * 8 * self.features_per_level)
+
+    def get_backward_num_ops(self):
+        return 0
 
     def get_tensors(self):
         """Hashed corner indices in → corner features out."""
@@ -196,6 +206,11 @@ class InterpolationOperator(HashEncodingOperator):
         B, N = self.dim[:2]
         # Combine 8 corners → 1 value (features_per_level) : 8 mul‑adds per feature
         return 8 * 2 * (B * N * self.num_levels * self.features_per_level)  # multiply+add
+
+    def get_backward_num_ops(self):
+        # Similar cost to forward to propagate gradients
+        B, N = self.dim[:2]
+        return 8 * 2 * (B * N * self.num_levels * self.features_per_level)
 
     def get_tensors(self):
         """Corner features + weights in → interpolated features out."""
@@ -240,6 +255,9 @@ class PointArrangeOperator(HashEncodingOperator):
         sort_ops = 2 * B * N * np.log2(B * N) # different rays also need to be sorted
         return scalar_ops + sort_ops
 
+    def get_backward_num_ops(self):
+        return self.get_num_ops()
+
     def get_tensors(self):
         """Coordinates in → rearranged coordinates out (same size)."""
         B, N = self.dim[:2]
@@ -261,7 +279,7 @@ class RFFEncodingOperator(EncodingOperator):
     """Random Fourier Features encoding operator that maps input coordinates to a higher dimension using random projections."""
     def __init__(self, dim, *, input_dim: int = 3, num_features: int = 256, scale: float = 1.0, 
                  use_sin_cos: bool = True, implementation: Literal["tcnn", "torch"] = "torch", 
-                 bitwidth: int = 16, graph=None):
+                 bitwidth: int = 16, graph=None, backward: bool = False):
         """
         Args:
             dim: The dimensions of the input/output tensors
@@ -278,7 +296,7 @@ class RFFEncodingOperator(EncodingOperator):
         self.implementation = implementation
         self.output_dim = num_features * 2 if use_sin_cos else num_features
         
-        super().__init__(dim, bitwidth, graph)
+        super().__init__(dim, bitwidth, graph, backward=backward)
         self.op_type = "RFFEncoding"
     
     def get_tensors(self):
@@ -294,6 +312,13 @@ class RFFEncodingOperator(EncodingOperator):
         # Matrix multiplication for projection + sin/cos operations
         mat_mul_ops = B * N * self.input_dim * self.num_features * 2  # 2 ops per multiply-add
         sin_cos_ops = B * N * self.output_dim  # 1 op per sin/cos function
+        return mat_mul_ops + sin_cos_ops
+
+    def get_backward_num_ops(self):
+        # Backprop through projection and sin/cos of similar order
+        B, N = self.dim[:2]
+        mat_mul_ops = B * N * self.input_dim * self.num_features * 2
+        sin_cos_ops = B * N * self.output_dim
         return mat_mul_ops + sin_cos_ops
 
     # shape helpers

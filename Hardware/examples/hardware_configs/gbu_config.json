@@ -1,0 +1,139 @@
+{
+  "accelerator_name": "GBU",
+
+  "hardware_modules": {
+    "row_processing_element": {
+      "module_type": "ROWPROCESSING",
+      "implementation": "row_pe",
+      "count": 4,
+      "specifications": {
+        "row_width": 256,
+        "bundle_size": 32,
+        "precision": "fp16"
+      },
+      "performance": {
+        "latency_cycles": 10,
+        "throughput_ops_per_cycle": 64.0,
+        "max_frequency_mhz": 800
+      },
+      "resources": {
+        "area_um2": 45345,
+        "power_uw": 13750,
+        "memory_kb": 32
+      }
+    },
+    
+    "row_generation_engine": {
+      "module_type": "ROWGENERATION",
+      "implementation": "row_gen",
+      "count": 2,
+      "specifications": {
+        "generation_strategy": "dynamic",
+        "max_rows": 1024,
+        "precision": "fp16"
+      },
+      "performance": {
+        "latency_cycles": 8,
+        "throughput_ops_per_cycle": 32.0,
+        "max_frequency_mhz": 800
+      },
+      "resources": {
+        "area_um2": 17521,
+        "power_uw": 5220,
+        "memory_kb": 16
+      }
+    },
+
+    "decomp_binning_engine": {
+      "module_type": "DECOMPBINNING",
+      "implementation": "decomp_bin",
+      "count": 1,
+      "specifications": {
+        "decomposition_levels": 4,
+        "bin_size": 64,
+        "precision": "fp16"
+      },
+      "performance": {
+        "latency_cycles": 16,
+        "throughput_ops_per_cycle": 16.0,
+        "max_frequency_mhz": 800
+      },
+      "resources": {
+        "area_um2": 110000,
+        "power_uw": 31157,
+        "memory_kb": 64
+      }
+    },
+
+    "bundle_processor": {
+      "module_type": "FIELD_COMPUTATION",
+      "implementation": "bundle_compute",
+      "count": 8,
+      "specifications": {
+        "bundle_size": 32,
+        "compute_units": 16,
+        "precision": "fp16"
+      },
+      "performance": {
+        "latency_cycles": 32,
+        "throughput_ops_per_cycle": 128.0,
+        "max_frequency_mhz": 1000
+      },
+      "resources": {
+        "area_um2": 200000,
+        "power_uw": 80000,
+        "memory_kb": 128
+      }
+    },
+
+    "gradient_accumulator": {
+      "module_type": "GRADIENT_ACCUMULATION",
+      "implementation": "grad_accum",
+      "count": 2,
+      "specifications": {
+        "accumulation_buffer_size": 4096,
+        "reduction_tree_depth": 4,
+        "precision": "fp32"
+      },
+      "performance": {
+        "latency_cycles": 8,
+        "throughput_ops_per_cycle": 32.0,
+        "max_frequency_mhz": 1000
+      },
+      "resources": {
+        "area_um2": 50000,
+        "power_uw": 20000,
+        "memory_kb": 64
+      }
+    }
+  },
+
+  "sram_blocks": [
+    {"name": "row_buffer", "unit": "ROWPROCESSING", "size_kb": 512},
+    {"name": "bundle_buffer", "unit": "DECOMPBINNING", "size_kb": 256},
+    {"name": "gradient_buffer", "unit": "GRADIENT_ACCUMULATION", "size_kb": 256},
+    {"name": "weight_buffer", "unit": "FIELD_COMPUTATION", "size_kb": 128}
+  ],
+
+  "interconnect": {
+    "type": "crossbar",
+    "topology": "full_mesh",
+    "bandwidth_gbps": 256,
+    "latency_cycles": 2
+  },
+
+  "memory_hierarchy": {
+    "l1_cache_kb": 128,
+    "l2_cache_kb": 1024,
+    "dram_bandwidth_gbps": 512,
+    "dram_capacity_gb": 16
+  },
+
+  "training_specific": {
+    "backward_pass_support": true,
+    "row_based_processing": true,
+    "bundle_optimization": true,
+    "gradient_accumulation": true,
+    "mixed_precision": true
+  }
+}
